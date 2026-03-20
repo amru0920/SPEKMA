@@ -35,8 +35,9 @@ let state = {
   selectedHari:      {},
   jadualSukanTab:    null,
   kumpulanSukanTab:  null,
-  rrSukanTab:        null,    // tab sukan aktif dalam Urus Round Robin
-  rrEditingMatch:    null,    // 'sukanId_index' semasa edit perlawanan RR
+  rrSukanTab:        null,
+  rrEditingMatch:    null,
+  streamTab:         'awam',    // 'awam' | 'urus'
 
   /* Data */
   keputusan:     {},
@@ -47,7 +48,8 @@ let state = {
   password:      PASSWORD_TETAP,
   formatSukan:   { ...FORMAT_ASAL },
   kumpulanSukan: JSON.parse(JSON.stringify(KUMPULAN_ASAL)),
-  roundRobin:    {},   // { [sukanId]: { peserta: [], perlawanan: [] } }
+  roundRobin:    {},
+  streaming:     [],   // { id, nama, url, platform, sukanId, aktif }
 
 };
 
@@ -67,6 +69,7 @@ function simpanData() {
     localStorage.setItem('spekma_format',       JSON.stringify(state.formatSukan));
     localStorage.setItem('spekma_kumpulan',     JSON.stringify(state.kumpulanSukan));
     localStorage.setItem('spekma_roundrobin',   JSON.stringify(state.roundRobin));
+    localStorage.setItem('spekma_streaming',    JSON.stringify(state.streaming));
   } catch (e) { console.warn('Gagal simpan data:', e); }
 }
 
@@ -90,6 +93,8 @@ function muatData() {
     if (fm) state.formatSukan  = JSON.parse(fm);
     if (km) state.kumpulanSukan= JSON.parse(km);
     if (rr) state.roundRobin   = JSON.parse(rr);
+    const sm = localStorage.getItem('spekma_streaming');
+    if (sm) state.streaming    = JSON.parse(sm);
   } catch (e) { console.warn('Gagal muat data:', e); }
 }
 
@@ -190,7 +195,7 @@ function renderKedudukan() {
    ================================================================ */
 function render() {
   const navBtns = document.querySelectorAll('.topbar-nav .nav-btn');
-  const tabList = ['kedudukan', 'keputusan', 'jadual'];
+  const tabList = ['kedudukan', 'keputusan', 'jadual', 'streaming'];
   navBtns.forEach((btn, i) => {
     if (tabList[i]) btn.classList.toggle('active', tabList[i] === state.tab);
   });
@@ -201,6 +206,9 @@ function render() {
   if      (state.tab === 'kedudukan') el.innerHTML = renderKedudukan();
   else if (state.tab === 'keputusan') el.innerHTML = renderKeputusan();
   else if (state.tab === 'jadual')    el.innerHTML = renderJadual();
+  else if (state.tab === 'streaming') el.innerHTML = state.streamTab === 'urus' && state.staffLogin
+                                                      ? renderUrusStreaming()
+                                                      : renderStreaming();
   else if (state.tab === 'tetapan')   el.innerHTML = renderTetapan();
 }
 
