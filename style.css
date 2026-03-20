@@ -1495,3 +1495,169 @@ input[type="time"] { color-scheme: dark; }
   text-align: center;
   margin-top: 8px;
 }
+
+
+/* ================================================================
+   LIVE STREAMING
+   ================================================================ */
+
+/* Hero banner streaming */
+.stream-hero {
+  text-align: center;
+  padding: 28px 20px 24px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, rgba(231,76,60,0.08) 0%, transparent 60%);
+  border: 1px solid rgba(231,76,60,0.2);
+  border-radius: 14px;
+}
+.stream-hero-dot {
+  width: 10px; height: 10px;
+  background: var(--red);
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  animation: blink 1s infinite;
+}
+.stream-hero-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800; font-size: 28px;
+  color: var(--text); letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.stream-hero-sub {
+  font-size: 13px; color: var(--muted);
+}
+
+/* Grid kad streaming */
+.stream-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+/* Kad satu link streaming */
+.stream-kad {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stream-kad:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+.stream-kad-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.stream-kad-icon { font-size: 24px; }
+
+.stream-live-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(231,76,60,0.15);
+  border: 1px solid rgba(231,76,60,0.4);
+  color: #ff6b6b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.stream-live-dot {
+  width: 6px; height: 6px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: blink 1s infinite;
+}
+
+.stream-kad-body {
+  padding: 14px 16px 10px;
+}
+.stream-kad-nama {
+  font-weight: 700; font-size: 15px;
+  margin-bottom: 5px;
+}
+.stream-kad-sukan {
+  font-size: 12px; color: var(--muted);
+}
+
+/* Butang tonton */
+.stream-tonton-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 12px 14px 14px;
+  padding: 11px;
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700; font-size: 14px;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.stream-tonton-btn:hover  { opacity: 0.88; }
+.stream-tonton-btn:active { transform: scale(0.98); }
+
+/* Row urus streaming (dalam Tetapan) */
+.stream-urus-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: border-color 0.15s;
+}
+.stream-urus-row.tidak-aktif {
+  opacity: 0.5;
+  border-style: dashed;
+}
+.stream-urus-icon  { font-size: 22px; flex-shrink: 0; }
+.stream-urus-info  { flex: 1; min-width: 0; }
+.stream-urus-nama  { font-weight: 600; font-size: 14px; }
+.stream-urus-url   {
+  font-size: 11px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 300px; margin-top: 2px;
+}
+.stream-urus-sukan { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+.stream-urus-aksi {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.stream-toggle-btn {
+  padding: 5px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.stream-toggle-btn.on {
+  border-color: rgba(46,204,113,0.4);
+  color: var(--green);
+}
+.stream-toggle-btn.on:hover  { background: rgba(46,204,113,0.1); }
+.stream-toggle-btn:not(.on):hover { border-color: var(--gold); color: var(--gold); }
+
+@media (max-width: 500px) {
+  .stream-grid { grid-template-columns: 1fr; }
+  .stream-urus-row { flex-wrap: wrap; }
+  .stream-urus-aksi { width: 100%; }
+  .stream-toggle-btn { flex: 1; text-align: center; }
+}
