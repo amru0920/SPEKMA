@@ -292,4 +292,8 @@ function padamStreamLink(i) {
   state.streaming.splice(i, 1);
   simpanData();
   render();
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> bf49cbd (feat: add tetapan.js for settings management with sub-tabs for account management, staff addition, team management, and sports & events)
