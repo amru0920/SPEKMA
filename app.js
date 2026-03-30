@@ -292,7 +292,12 @@ let state = {
   kumpulanSukanTab:  null,
   rrSukanTab:        null,
   rrEditingMatch:    null,
-  streamTab:         'awam',    // 'awam' | 'urus'
+  streamTab:         'awam',
+  jadualPenuhMode:   null,
+  jadualPenuhHari:   {},
+  drawMode:          null,   // sukanId bila Draw aktif
+  selectedKategori:      {},
+  selectedKatKumpulan:   {},  // { sukanId: acaraId } tab kategori aktif dalam Urus Kumpulan
 
   /* Data */
   keputusan:     {},
@@ -304,7 +309,10 @@ let state = {
   formatSukan:   { ...FORMAT_ASAL },
   kumpulanSukan: JSON.parse(JSON.stringify(KUMPULAN_ASAL)),
   roundRobin:    {},
-  streaming:     [],   // { id, nama, url, platform, sukanId, aktif }
+  streaming:     [],
+  bracket:       {},    // { [sukanId]: { suku_akhir, separuh_akhir, final, tempat_ketiga } }
+  bracketEdit:          null,
+  bracketPresetSelesai: false,
 
 };
 
@@ -325,6 +333,7 @@ function simpanData() {
     localStorage.setItem('spekma_kumpulan',     JSON.stringify(state.kumpulanSukan));
     localStorage.setItem('spekma_roundrobin',   JSON.stringify(state.roundRobin));
     localStorage.setItem('spekma_streaming',    JSON.stringify(state.streaming));
+    localStorage.setItem('spekma_bracket',      JSON.stringify(state.bracket));
   } catch (e) { console.warn('Gagal simpan data:', e); }
 }
 
@@ -350,6 +359,27 @@ function muatData() {
     if (rr) state.roundRobin   = JSON.parse(rr);
     const sm = localStorage.getItem('spekma_streaming');
     if (sm) state.streaming    = JSON.parse(sm);
+    const br = localStorage.getItem('spekma_bracket');
+    if (br) {
+      state.bracket = JSON.parse(br);
+      /* Kemaskini advancement setiap bracket selepas muat */
+      Object.keys(state.bracket).forEach(sid => kemaskiniSemakBracket(sid));
+    }
+
+    /* Betulkan perlawanan yang salah jadi LIVE (tarikh dah >4 jam lepas) */
+    const now = new Date();
+    state.jadual.forEach(m => {
+      if (m.status !== 'sedang_berlangsung' || !m.tarikh || !m.masa) return;
+      const masaMula = new Date(m.tarikh + 'T' + m.masa + ':00');
+      if ((now - masaMula) / 3600000 >= 4) m.status = 'akan_datang';
+    });
+    Object.values(state.roundRobin).forEach(rr => {
+      (rr.perlawanan || []).forEach(m => {
+        if (m.status !== 'sedang_berlangsung' || !m.tarikh || !m.masa) return;
+        const masaMula = new Date(m.tarikh + 'T' + m.masa + ':00');
+        if ((now - masaMula) / 3600000 >= 4) m.status = 'akan_datang';
+      });
+    });
   } catch (e) { console.warn('Gagal muat data:', e); }
 }
 
@@ -449,11 +479,14 @@ function renderKedudukan() {
    RENDER UTAMA
    ================================================================ */
 function render() {
-  const navBtns = document.querySelectorAll('.topbar-nav .nav-btn');
+  /* Kemaskini state butang navigasi */
   const tabList = ['kedudukan', 'keputusan', 'jadual', 'streaming'];
-  navBtns.forEach((btn, i) => {
+  document.querySelectorAll('.topbar-nav .nav-btn').forEach((btn, i) => {
     if (tabList[i]) btn.classList.toggle('active', tabList[i] === state.tab);
   });
+  /* Butang tetapan berasingan */
+  const tetapanBtn = document.querySelector('.tetapan-btn');
+  if (tetapanBtn) tetapanBtn.classList.toggle('active', state.tab === 'tetapan');
 
   const el = document.getElementById('main-content');
   if (!el) return;

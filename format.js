@@ -797,6 +797,21 @@ function renderFormatSukan() {
                   `<option value="${k}" ${fmt===k?'selected':''}>${v.icon} ${v.label}</option>`
                 ).join('')}
               </select>
+              <!-- Toggle Main Ikut Set -->
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;
+                font-size:12px;color:var(--muted);white-space:nowrap;user-select:none"
+                title="Aktifkan kiraan skor ikut set (Badminton, Sepak Takraw, dll)">
+                <div class="toggle-set-wrap">
+                  <input type="checkbox" id="set-toggle-${s.id}"
+                    ${s.mainSet ? 'checked' : ''}
+                    onchange="togolMainSet('${s.id}',this.checked)"
+                    style="display:none"/>
+                  <div class="toggle-set-track ${s.mainSet?'on':''}">
+                    <div class="toggle-set-thumb"></div>
+                  </div>
+                </div>
+                🏸 Main ikut Set
+              </label>
               ${urusBtn}
             </div>
           </div>
@@ -812,19 +827,20 @@ function renderFormatSukan() {
    Paparan berbeza ikut format sukan
    ================================================================ */
 function renderUrusKumpulan() {
-  /* Sukan yang ada pengurusan kumpulan/peserta (bukan individu) */
+  /* Sukan yang guna format kumpulan SAHAJA */
   const sukanUrus = state.sukan.filter(s =>
-    (state.formatSukan[s.id] || FORMAT_ASAL[s.id] || 'biasa') !== 'individu'
+    (state.formatSukan[s.id] || FORMAT_ASAL[s.id] || 'biasa') === 'kumpulan'
   );
 
   if (sukanUrus.length === 0) {
     return `
       <div class="set-panel-title">🔵 Urus Kumpulan &amp; Peserta</div>
       <div class="kosong-box" style="margin-top:16px">
-        <div style="font-size:32px;margin-bottom:10px">🏅</div>
-        Semua sukan ditetapkan sebagai Individu.<br/>
+        <div style="font-size:32px;margin-bottom:10px">🔵</div>
+        Tiada sukan dengan format Peringkat Kumpulan.<br/>
         <span style="font-size:13px;margin-top:6px;display:block">
-          Pergi ke <strong>Format Sukan</strong> dan tukar format kepada Kumpulan, Round Robin atau Knockout.
+          Pergi ke <strong>Format Sukan</strong> dan tukar format mana-mana sukan kepada
+          <strong>🔵 Peringkat Kumpulan</strong>.
         </span>
       </div>
     `;
@@ -835,54 +851,116 @@ function renderUrusKumpulan() {
     ? state.kumpulanSukanTab : sukanUrus[0]?.id;
 
   const sukanKini = state.sukan.find(s => s.id === tabAktif);
-  const fmt       = state.formatSukan[tabAktif] || FORMAT_ASAL[tabAktif] || 'biasa';
 
   const tabBar = sukanUrus.length > 1 ? `
-    <div class="subtab-bar" style="margin-bottom:20px">
-      ${sukanUrus.map(s => {
-        const f = state.formatSukan[s.id] || 'biasa';
-        return `
-          <button class="subtab-btn ${s.id === tabAktif ? 'active' : ''}"
-            onclick="pilihKumpulanSukanTab('${s.id}')">
-            ${s.icon||'🏅'} ${s.nama}
-            <span style="font-size:10px;margin-left:4px;opacity:0.7">
-              ${LABEL_FORMAT[f]?.icon||''}
-            </span>
-          </button>
-        `;
-      }).join('')}
+    <div class="subtab-bar" style="margin-bottom:16px">
+      ${sukanUrus.map(s => `
+        <button class="subtab-btn ${s.id === tabAktif ? 'active' : ''}"
+          onclick="pilihKumpulanSukanTab('${s.id}')">
+          ${s.icon||'🏅'} ${s.nama}
+        </button>
+      `).join('')}
     </div>
   ` : '';
 
-  /* Render ikut format */
-  let kandungan = '';
-  if (fmt === 'kumpulan')         kandungan = renderUrusKumpulanFasa(tabAktif, sukanKini);
-  else if (fmt === 'round_robin') kandungan = renderUrusRoundRobin(tabAktif, sukanKini);
-  else                            kandungan = renderUrusKnockout(tabAktif, sukanKini);
+  /* Tab kategori/acara (kalau sukan ada lebih 1 acara) */
+  const acara = sukanKini?.acara || [];
+  let katKey  = tabAktif; /* kunci untuk kumpulanSukan */
+  let katNama = '';       /* nama kategori untuk label jadual */
+  let tabKat  = '';
+
+  if (acara.length > 1) {
+    const katAktif = (state.selectedKatKumpulan?.[tabAktif] &&
+      acara.find(a => a.id === state.selectedKatKumpulan[tabAktif]))
+      ? state.selectedKatKumpulan[tabAktif]
+      : acara[0].id;
+
+    if (!state.selectedKatKumpulan) state.selectedKatKumpulan = {};
+    state.selectedKatKumpulan[tabAktif] = katAktif;
+
+    katKey  = tabAktif + '___' + katAktif;
+    katNama = acara.find(a => a.id === katAktif)?.nama || '';
+
+    tabKat = `
+      <div class="kat-tab-bar" style="margin-bottom:16px">
+        <span style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;
+          font-weight:600;flex-shrink:0">Kategori:</span>
+        ${acara.map(a => `
+          <button class="kat-tab-btn ${a.id === katAktif ? 'active' : ''}"
+            onclick="pilihKatKumpulan('${tabAktif}','${a.id}')">
+            ${a.nama}
+          </button>
+        `).join('')}
+      </div>
+    `;
+  } else if (acara.length === 1) {
+    katNama = acara[0].nama;
+  }
+
+  const kandungan = renderUrusKumpulanFasa(tabAktif, katKey, sukanKini, katNama);
 
   return `
     <div class="set-panel-title">🔵 Urus Kumpulan &amp; Peserta</div>
-    <div class="set-panel-desc">Urus peserta dan kumpulan untuk setiap sukan.</div>
+    <div class="set-panel-desc">Urus peserta dan kumpulan untuk setiap sukan dan kategori.</div>
     ${tabBar}
+    ${tabKat}
     ${kandungan}
   `;
+}
+
+function pilihKatKumpulan(sukanId, acaraId) {
+  if (!state.selectedKatKumpulan) state.selectedKatKumpulan = {};
+  state.selectedKatKumpulan[sukanId] = acaraId;
+  render();
 }
 
 
 /* ================================================================
    URUS: PERINGKAT KUMPULAN
    ================================================================ */
-function renderUrusKumpulanFasa(sukanId, sukanKini) {
-  const kumpulan = state.kumpulanSukan[sukanId] || [];
+function renderUrusKumpulanFasa(sukanId, katKey, sukanKini, katNama) {
+  /* katKey = sukanId biasa, ATAU sukanId___acaraId untuk multi-kategori */
+  const kumpulan     = state.kumpulanSukan[katKey] || [];
+  const totalPasukan = kumpulan.reduce((n, k) => n + k.pasukan.length, 0);
+
+  /* Perlawanan bagi kategori ini */
+  const pJadual   = state.jadual.filter(m =>
+    m.sukanId === sukanId && m.peringkat === 'kumpulan' &&
+    (!katNama || m.kategori === katNama)
+  );
+  const adaJadual = pJadual.length;
+
+  const jangkaanPerlw = kumpulan.reduce((n, k) => {
+    const x = k.pasukan.length;
+    return n + (x > 1 ? (x * (x-1)) / 2 : 0);
+  }, 0);
+
+  const adaJadualKat = state.jadual.some(m => m.sukanId === sukanId && m.peringkat === 'kumpulan' && (!katNama || m.kategori === katNama));
+  const adaKumpulan  = kumpulan.length > 0;
+  const katLabel     = katNama ? ` — ${katNama}` : '';
 
   return `
-    <div class="fmt-header">
+    <div class="fmt-header" style="flex-wrap:wrap;gap:8px">
       <div>
-        <div class="fmt-nama">${sukanKini?.icon||'🏅'} ${sukanKini?.nama}</div>
+        <div class="fmt-nama">${sukanKini?.icon||'🏅'} ${sukanKini?.nama}${katLabel}</div>
         <div class="fmt-badge kumpulan">🔵 Peringkat Kumpulan</div>
       </div>
-      <button class="add-btn" style="font-size:12px;padding:7px 14px"
-        onclick="tambahKumpulan('${sukanId}')">+ Kumpulan Baru</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="add-btn" style="font-size:12px;padding:7px 14px"
+          onclick="tambahKumpulan('${katKey}')">+ Kumpulan Baru</button>
+        ${adaKumpulan ? `
+          <button class="staff-del" style="padding:7px 12px;font-size:12px"
+            onclick="padamSemuaKumpulan('${katKey}','${sukanId}',this.dataset.kat)" data-kat="${katNama||''}">
+            🗑 Reset Kumpulan
+          </button>
+        ` : ''}
+        ${adaJadualKat ? `
+          <button class="staff-del" style="padding:7px 12px;font-size:12px"
+            onclick="padamSemuaJadualKumpulan('${sukanId}',this.dataset.kat)" data-kat="${katNama||''}">
+            🗑 Padam Semua Jadual
+          </button>
+        ` : ''}
+      </div>
     </div>
 
     <div class="fmt-info-box">
@@ -894,43 +972,150 @@ function renderUrusKumpulanFasa(sukanId, sukanKini) {
         <div style="font-size:28px;margin-bottom:8px">🔵</div>
         Tiada kumpulan. Klik "+ Kumpulan Baru" di atas.
       </div>
-    ` : kumpulan.map((k, ki) => `
-      <div class="kumpulan-panel-edit">
-        <div class="kumpulan-panel-header">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span class="kumpulan-badge">${k.id}</span>
-            <input type="text" class="kumpulan-nama-input"
-              value="${k.nama}"
-              onchange="ubahNamaKumpulan('${sukanId}', ${ki}, this.value)"/>
-            <span class="count-chip">${k.pasukan.length} pasukan</span>
+    ` : `
+      ${kumpulan.map((k, ki) => `
+        <div class="kumpulan-panel-edit">
+          <div class="kumpulan-panel-header">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span class="kumpulan-badge">${k.id}</span>
+              <input type="text" class="kumpulan-nama-input"
+                value="${k.nama}"
+                onchange="ubahNamaKumpulan('${katKey}', ${ki}, this.value)"/>
+              <span class="count-chip">${k.pasukan.length} pasukan</span>
+            </div>
+            <button class="staff-del" onclick="padamKumpulan('${katKey}', ${ki})">Padam</button>
           </div>
-          <button class="staff-del" onclick="padamKumpulan('${sukanId}', ${ki})">Padam</button>
-        </div>
 
-        <div class="tag-list" style="margin:8px 0 12px">
-          ${k.pasukan.length === 0
-            ? `<span style="color:var(--muted);font-size:13px">Tiada pasukan. Tambah di bawah.</span>`
-            : k.pasukan.map((p, pi) => `
-                <div class="tag">
-                  ${p}
-                  <span class="tag-del" onclick="padamPasukanKumpulan('${sukanId}', ${ki}, ${pi})">×</span>
-                </div>
-              `).join('')
-          }
-        </div>
+          <div class="tag-list" style="margin:8px 0 12px">
+            ${k.pasukan.length === 0
+              ? `<span style="color:var(--muted);font-size:13px">Tiada pasukan. Tambah di bawah.</span>`
+              : k.pasukan.map((p, pi) => `
+                  <div class="tag">
+                    ${p}
+                    <span class="tag-del" onclick="padamPasukanKumpulan('${katKey}', ${ki}, ${pi})">×</span>
+                  </div>
+                `).join('')
+            }
+          </div>
 
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <select id="sel-pasukan-${sukanId}-${ki}" class="podium-select"
-            style="flex:1;min-width:160px;padding:8px 10px;font-size:13px">
-            <option value="">-- Pilih pasukan --</option>
-            ${state.pasukan.filter(p => !k.pasukan.includes(p))
-              .map(p => `<option value="${p}">${p}</option>`).join('')}
-          </select>
-          <button class="add-btn" style="font-size:12px;padding:7px 14px"
-            onclick="tambahPasukanKumpulan('${sukanId}', ${ki})">+ Tambah</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="sel-pasukan-${katKey}-${ki}" class="podium-select"
+              style="flex:1;min-width:160px;padding:8px 10px;font-size:13px">
+              <option value="">-- Pilih pasukan --</option>
+              ${state.pasukan.filter(p => !k.pasukan.includes(p))
+                .map(p => `<option value="${p}">${p}</option>`).join('')}
+            </select>
+            <button class="add-btn" style="font-size:12px;padding:7px 14px"
+              onclick="tambahPasukanKumpulan('${katKey}', ${ki})">+ Tambah</button>
+          </div>
         </div>
-      </div>
-    `).join('')}
+      `).join('')}
+
+      <!-- Bahagian Jana Jadual -->
+      ${totalPasukan >= 2 ? `
+          <div class="rr-section-title">
+            <span>⚙️ Jana Jadual Peringkat Kumpulan</span>
+            ${adaJadual > 0
+              ? `<span class="count-chip" style="color:var(--green)">${adaJadual} perlawanan dijana</span>`
+              : ''}
+          </div>
+
+          <div class="rr-info-box">
+            ${kumpulan.map(k => {
+              const x = k.pasukan.length;
+              const bil = x > 1 ? (x*(x-1))/2 : 0;
+              return `<strong>${k.nama}</strong>: ${x} pasukan → ${bil} perlawanan`;
+            }).join('<br/>')}
+            <br/>Jumlah: <strong>${jangkaanPerlw} perlawanan</strong> dijana automatik.
+            ${adaJadual > 0
+              ? `<br/>⚠️ Jana semula <strong>tidak padam score</strong> yang dah dimasuk. Tarikh & masa dikekal.`
+              : ''}
+          </div>
+
+          <!-- Tetapan masa perlawanan -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+            <div>
+              <div class="field-label">📅 Tarikh Mula (pilihan)</div>
+              <input type="date" id="jana-tarikh-${katKey}" class="field-input"
+                style="padding:8px 10px;font-size:13px"/>
+            </div>
+            <div>
+              <div class="field-label">🕐 Masa Mula (pilihan)</div>
+              <input type="time" id="jana-masa-${katKey}" class="field-input"
+                style="padding:8px 10px;font-size:13px" value="09:00"/>
+            </div>
+            <div>
+              <div class="field-label">⏱ Selang Tiap Perlawanan (minit)</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+                ${[45,60,90,120].map(m => `
+                  <button type="button" class="selang-preset"
+                    onclick="document.getElementById('jana-selang-${katKey}').value='${m}'">
+                    ${m}m
+                  </button>
+                `).join('')}
+                <button type="button" class="selang-preset"
+                  onclick="document.getElementById('jana-selang-${katKey}').value='0'">
+                  Tanpa masa
+                </button>
+              </div>
+              <input type="number" id="jana-selang-${katKey}"
+                class="field-input"
+                style="padding:8px 10px;font-size:14px;max-width:140px"
+                placeholder="Contoh: 90"
+                min="0" value="90"
+              />
+            </div>
+            <div>
+              <div class="field-label">📍 Bilangan Gelanggang</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+                ${[1,2,3,4].map(n => `
+                  <button type="button" class="selang-preset"
+                    onclick="document.getElementById('jana-gelanggang-${katKey}').value='${n}';kemaskiniNamaGelanggang('${katKey}')">
+                    ${n}
+                  </button>
+                `).join('')}
+              </div>
+              <input type="number" id="jana-gelanggang-${katKey}"
+                class="field-input"
+                style="padding:8px 10px;font-size:14px;max-width:100px"
+                placeholder="Contoh: 2"
+                min="1" max="10" value="1"
+                oninput="kemaskiniNamaGelanggang('${katKey}')"
+              />
+            </div>
+          </div>
+
+          <!-- Nama setiap gelanggang (auto jana tapi boleh edit) -->
+          <div id="nama-gelanggang-wrap-${katKey}" style="margin-bottom:14px">
+            <!-- diisi oleh kemaskiniNamaGelanggang() -->
+          </div>
+
+          <button class="rr-jana-btn" onclick="janaJadualKumpulan('${sukanId}','${katKey}',this.dataset.kat)" data-kat="${katNama||''}">
+            ⚙️ ${adaJadual > 0 ? 'Jana Semula Jadual Kumpulan' : 'Jana Jadual Kumpulan Sekarang'}
+          </button>
+        </div>
+      ` : `
+        <div class="rr-info-box" style="margin-top:8px">
+          ℹ️ Tambah sekurang-kurangnya <strong>2 pasukan</strong> dalam mana-mana kumpulan untuk jana jadual.
+        </div>
+      `}
+
+      <!-- Padam semua kumpulan sekaligus -->
+      ${kumpulan.length > 0 ? `
+        <div style="margin-top:8px;padding:12px 14px;background:rgba(231,76,60,0.05);
+          border:1px solid rgba(231,76,60,0.2);border-radius:10px;
+          display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="font-size:13px;color:var(--muted)">
+            🗑 Padam semua data kumpulan${katNama ? ' untuk <strong style="color:var(--text)">' + katNama + '</strong>' : ''} sekaligus
+          </div>
+          <button class="staff-del" style="padding:7px 16px"
+            onclick="padamSemuaKumpulan('${katKey}','${sukanId}',this.dataset.kat)" data-kat="${katNama||''}">
+            Padam Semua Kumpulan
+          </button>
+        </div>
+      ` : ''}
+    `}
+    ${kumpulan.length >= 2 ? renderJanaPeringkat(sukanId, katKey) : ''}
   `;
 }
 
@@ -1130,6 +1315,14 @@ function tukarFormatSukan(sukanId, format) {
   render();
 }
 
+function togolMainSet(sukanId, aktif) {
+  const s = state.sukan.find(x => x.id === sukanId);
+  if (!s) return;
+  s.mainSet = aktif;
+  simpanData();
+  render();
+}
+
 function pilihKumpulanSukanTab(sukanId) {
   state.kumpulanSukanTab = sukanId;
   render();
@@ -1229,4 +1422,213 @@ function padamPasukanKO(sukanId, pi) {
   kKO.pasukan.splice(pi, 1);
   simpanData(); render();
 }
+<<<<<<< HEAD
 >>>>>>> bf49cbd (feat: add tetapan.js for settings management with sub-tabs for account management, staff addition, team management, and sports & events)
+=======
+
+/* ================================================================
+   KEMASKINI NAMA GELANGGANG
+   ================================================================ */
+function kemaskiniNamaGelanggang(sukanId) {
+  const bilEl = document.getElementById('jana-gelanggang-' + sukanId);
+  const wrap  = document.getElementById('nama-gelanggang-wrap-' + sukanId);
+  if (!bilEl || !wrap) return;
+  const bil = Math.max(1, Math.min(10, parseInt(bilEl.value) || 1));
+  if (bil <= 1) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `
+    <div class="field-label" style="margin-bottom:8px">📍 Nama Gelanggang (boleh edit)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
+      ${Array.from({length: bil}, (_, i) => `
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Gelanggang ${i+1}</div>
+          <input type="text" id="jana-gel-nama-${sukanId}-${i}"
+            class="field-input" style="padding:7px 10px;font-size:13px"
+            value="Gelanggang ${String.fromCharCode(65+i)}" placeholder="Nama gelanggang"/>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+
+/* ================================================================
+   JANA JADUAL KUMPULAN AUTOMATIK
+   ── Selang-seli kumpulan + bahagi gelanggang
+   ================================================================ */
+function janaJadualKumpulan(sukanId, katKey, katNama) {
+  /* katKey — kunci kumpulanSukan (mungkin sama dengan sukanId atau ada ___acaraId) */
+  if (!katKey) katKey = sukanId;
+  const kumpulan = state.kumpulanSukan[katKey] || [];
+  const sukan    = state.sukan.find(s => s.id === sukanId);
+
+  const total = kumpulan.reduce((n, k) => {
+    const x = k.pasukan.length;
+    return n + (x > 1 ? (x*(x-1))/2 : 0);
+  }, 0);
+
+  if (total === 0) { alert('Tambah sekurang-kurangnya 2 pasukan dalam kumpulan.'); return; }
+
+  const tarikhMula    = document.getElementById('jana-tarikh-'     + katKey)?.value || '';
+  const masaMula      = document.getElementById('jana-masa-'        + katKey)?.value || '09:00';
+  const selang        = parseInt(document.getElementById('jana-selang-'     + katKey)?.value) || 90;
+  const bilGelanggang = Math.max(1, parseInt(document.getElementById('jana-gelanggang-' + katKey)?.value) || 1);
+
+  /* Nama gelanggang */
+  const namaGelanggang = Array.from({length: bilGelanggang}, (_, i) => {
+    const inp = document.getElementById('jana-gel-nama-' + katKey + '-' + i);
+    return inp?.value?.trim() || 'Gelanggang ' + String.fromCharCode(65 + i);
+  });
+
+  /* Kekal score lama (ikut kategori kalau ada) */
+  const infoLama = {};
+  state.jadual.filter(m =>
+    m.sukanId === sukanId && m.peringkat === 'kumpulan' && (!katNama || m.kategori === katNama)
+  ).forEach(m => {
+    const key = m.rumah + '___' + m.tamu + '___' + m.kumpulan;
+    infoLama[key] = { tarikh: m.tarikh, masa: m.masa, gelanggang: m.gelanggang,
+                      status: m.status, scoreRumah: m.scoreRumah, scoreTamu: m.scoreTamu };
+  });
+
+  /* Padam perlawanan kumpulan lama (ikut kategori kalau ada) */
+  state.jadual = state.jadual.filter(m =>
+    !(m.sukanId === sukanId && m.peringkat === 'kumpulan' && (!katNama || m.kategori === katNama))
+  );
+
+  /* Jana pasangan */
+  const semuaPasangan = [];
+  kumpulan.forEach(k => {
+    if (k.pasukan.length < 2) return;
+    for (let i = 0; i < k.pasukan.length; i++)
+      for (let j = i+1; j < k.pasukan.length; j++)
+        semuaPasangan.push({ rumah: k.pasukan[i], tamu: k.pasukan[j], kumpulan: k.id, kNama: k.nama });
+  });
+
+  /* Susun — selang-seli kumpulan, rehat pasukan */
+  const tersusun = [], berbaki = [...semuaPasangan], lastMain = {};
+  while (berbaki.length > 0) {
+    const slot = tersusun.length;
+    const lepas = slot > 0 ? tersusun[slot-1] : null;
+    const kumpLepas = lepas?.kumpulan || null;
+    const cat = [[], [], [], []];
+    berbaki.forEach((m, i) => {
+      const kBeza = m.kumpulan !== kumpLepas;
+      const clash = lepas && (m.rumah===lepas.rumah||m.rumah===lepas.tamu||m.tamu===lepas.rumah||m.tamu===lepas.tamu);
+      if (kBeza && !clash) cat[0].push(i);
+      else if (!kBeza && !clash) cat[1].push(i);
+      else if (kBeza && clash) cat[2].push(i);
+      else cat[3].push(i);
+    });
+    const pool = cat.find(c => c.length > 0);
+    const pil = pool.reduce((best, i) => {
+      const m = berbaki[i], mb = berbaki[best];
+      const rM = (slot-(lastMain[m.rumah]??-999))+(slot-(lastMain[m.tamu]??-999));
+      const rB = (slot-(lastMain[mb.rumah]??-999))+(slot-(lastMain[mb.tamu]??-999));
+      return rM > rB ? i : best;
+    });
+    const d = berbaki.splice(pil, 1)[0];
+    lastMain[d.rumah] = slot; lastMain[d.tamu] = slot;
+    tersusun.push(d);
+  }
+
+  /* Tetapkan masa & gelanggang
+     N gelanggang → N perlawanan SERENTAK pada masa yang sama,
+     masa naik setiap N slot.
+     Contoh 2 gelanggang, selang 90min:
+       idx 0 → Gel A, 09:00  |  idx 1 → Gel B, 09:00
+       idx 2 → Gel A, 10:30  |  idx 3 → Gel B, 10:30
+  */
+  const masaBase = tarikhMula && masaMula
+    ? new Date(tarikhMula + 'T' + masaMula + ':00') : null;
+
+  tersusun.forEach((p, idx) => {
+    const key      = p.rumah + '___' + p.tamu + '___' + p.kumpulan;
+    const lama     = infoLama[key] || {};
+    const slotMasa = Math.floor(idx / bilGelanggang);
+    const noGelang = idx % bilGelanggang;
+
+    let tarikh = lama.tarikh || '';
+    let masa   = lama.masa   || '';
+    let gelang = lama.gelanggang || namaGelanggang[noGelang];
+
+    if (!lama.gelanggang) gelang = namaGelanggang[noGelang];
+
+    if (!lama.tarikh && masaBase) {
+      const ms = selang > 0
+        ? new Date(masaBase.getTime() + slotMasa * selang * 60000)
+        : masaBase;
+      tarikh = ms.toISOString().split('T')[0];
+      masa   = ms.toTimeString().slice(0, 5);
+    }
+
+    state.jadual.push({
+      id:         sukanId + '_kump_' + p.kumpulan + '_' + idx + '_' + Date.now(),
+      sukanId,
+      kategori:   katNama || ((sukan?.nama||'') + ' — ' + p.kNama),
+      peringkat:  'kumpulan',
+      kumpulan:   p.kumpulan,
+      label:      '',
+      rumah:      p.rumah,
+      tamu:       p.tamu,
+      tarikh, masa,
+      gelanggang: gelang,
+      status:     lama.status     || 'akan_datang',
+      scoreRumah: lama.scoreRumah ?? 0,
+      scoreTamu:  lama.scoreTamu  ?? 0,
+    });
+  });
+
+  simpanData();
+  semakAutoStatus();
+
+  const bilBaru     = state.jadual.filter(m => m.sukanId === sukanId && m.peringkat === 'kumpulan').length;
+  const bilSlot     = Math.ceil(tersusun.length / bilGelanggang);
+  const infoGelang  = bilGelanggang > 1
+    ? `\n📍 ${bilGelanggang} gelanggang: ${namaGelanggang.join(', ')}\n⏱ ${bilSlot} slot masa (${bilGelanggang} perlawanan serentak)`
+    : '';
+
+  alert('✅ Berjaya! ' + bilBaru + ' perlawanan telah dijana.' + infoGelang + '\n\nPergi ke tab 📅 Jadual untuk lihat.');
+  render();
+}
+/* Padam semua perlawanan kumpulan sekaligus */
+function padamSemuaJadualKumpulan(sukanId, katNama) {
+  const sukan = state.sukan.find(s => s.id === sukanId);
+  const bil   = state.jadual.filter(m =>
+    m.sukanId === sukanId && m.peringkat === 'kumpulan' && (!katNama || m.kategori === katNama)
+  ).length;
+  const label = katNama ? `"${katNama}"` : (sukan?.nama || 'sukan ini');
+  if (!confirm('Padam semua ' + bil + ' perlawanan kumpulan untuk ' + label + '?\n\nScore & keputusan juga akan dipadam.')) return;
+  state.jadual = state.jadual.filter(m =>
+    !(m.sukanId === sukanId && m.peringkat === 'kumpulan' && (!katNama || m.kategori === katNama))
+  );
+  simpanData();
+  render();
+}
+
+/* Padam semua kumpulan (dan jadual berkaitan) sekaligus */
+function padamSemuaKumpulan(katKey, sukanId, katNama) {
+  const bilKump = (state.kumpulanSukan[katKey] || []).length;
+  const bilJdl  = state.jadual.filter(m =>
+    m.sukanId === sukanId && m.peringkat === 'kumpulan' && (!katNama || m.kategori === katNama)
+  ).length;
+
+  const label = katNama || 'sukan ini';
+  if (!confirm(
+    'Padam semua ' + bilKump + ' kumpulan' +
+    (bilJdl > 0 ? ' dan ' + bilJdl + ' perlawanan' : '') +
+    ' untuk ' + label + '?\n\nTindakan ini tidak boleh diundur.'
+  )) return;
+
+  /* Padam kumpulan */
+  delete state.kumpulanSukan[katKey];
+
+  /* Padam jadual berkaitan */
+  if (bilJdl > 0) {
+    state.jadual = state.jadual.filter(m =>
+      !(m.sukanId === sukanId && m.peringkat === 'kumpulan' && (!katNama || m.kategori === katNama))
+    );
+  }
+
+  simpanData();
+  render();
+}
+>>>>>>> 2c89801 (feat: implement full bracket system for knockout tournaments)

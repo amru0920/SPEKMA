@@ -3326,4 +3326,617 @@ input[type="time"] { color-scheme: dark; }
   .stream-urus-aksi { width: 100%; }
   .stream-toggle-btn { flex: 1; text-align: center; }
 }
+<<<<<<< HEAD
 >>>>>>> bf49cbd (feat: add tetapan.js for settings management with sub-tabs for account management, staff addition, team management, and sports & events)
+=======
+
+.selang-preset {
+  padding: 5px 12px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'Barlow', sans-serif;
+  transition: all 0.15s;
+}
+.selang-preset:hover { border-color: var(--gold); color: var(--gold); }
+
+
+/* ================================================================
+   TAB LOMPAT KUMPULAN
+   ================================================================ */
+.kump-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--navy2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.kump-tab-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.kump-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.kump-tab-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(245,166,35,0.06);
+}
+
+/* Butang untuk knockout/peringkat lain */
+.kump-tab-knockout {
+  border-color: rgba(245,166,35,0.3);
+  color: var(--gold);
+  background: rgba(245,166,35,0.06);
+}
+.kump-tab-knockout:hover {
+  background: rgba(245,166,35,0.15);
+}
+
+@media (max-width: 500px) {
+  .kump-tab-bar { gap: 4px; padding: 8px 10px; }
+  .kump-tab-btn { font-size: 12px; padding: 5px 10px; }
+}
+
+
+/* ── Butang Cetak ── */
+.cetak-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+}
+.cetak-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(245,166,35,0.06);
+}
+
+
+/* ================================================================
+   JADUAL PENUH
+   ================================================================ */
+
+.jp-wrap { animation: fadeSlide 0.18s ease; }
+
+.jp-tarikh-header {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700; font-size: 16px;
+  color: var(--text);
+  background: var(--navy2);
+  border-left: 4px solid var(--gold);
+  padding: 8px 14px;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 8px;
+}
+
+.jp-table-wrap { overflow-x: auto; }
+
+.jp-table {
+  width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px;
+}
+
+.jp-table thead th {
+  background: var(--navy2);
+  color: var(--muted);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.jp-table tbody tr { transition: background 0.12s; }
+.jp-table tbody tr:hover td { background: var(--card2); }
+
+.jp-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+
+.jp-genap td  { background: var(--card); }
+.jp-ganjil td { background: var(--navy2); }
+.jp-live td   { background: rgba(231,76,60,0.05); border-left: 2px solid var(--red); }
+.jp-selesai td{ background: rgba(46,204,113,0.04); }
+
+.jp-masa {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700; font-size: 15px;
+  color: var(--text); white-space: nowrap;
+}
+
+.jp-kump { font-size: 11px; color: var(--muted); }
+
+.jp-pasukan   { font-weight: 600; font-size: 14px; color: var(--text); }
+.jp-pasukan.jp-menang { color: var(--emas); }
+
+.jp-score {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800; font-size: 16px; color: var(--gold);
+}
+.jp-vs {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600; font-size: 13px; color: var(--muted);
+}
+
+.jp-gel { font-size: 12px; color: var(--muted); }
+
+/* Butang Jadual Penuh aktif */
+.cetak-btn.active-mode {
+  background: var(--gold);
+  color: var(--navy);
+  border-color: var(--gold);
+}
+.cetak-btn.active-mode:hover { background: var(--gold2); }
+
+
+/* ================================================================
+   ROUND ROBIN MATRIX
+   ================================================================ */
+.rr-matrix {
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 400px;
+  table-layout: fixed;
+}
+
+.rr-mx-corner {
+  background: var(--navy2);
+  width: 130px;
+  min-width: 130px;
+}
+
+.rr-mx-head {
+  background: var(--navy2);
+  color: var(--muted);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 8px 4px;
+  text-align: center;
+  border: 1px solid var(--border);
+  width: 90px;
+  min-width: 90px;
+  max-width: 90px;
+}
+
+.rr-mx-label {
+  background: var(--navy2);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  width: 130px;
+  min-width: 130px;
+}
+
+.rr-mx-diag {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  width: 90px;
+  min-width: 90px;
+}
+
+.rr-mx-empty {
+  text-align: center;
+  color: var(--border);
+  border: 1px solid var(--border);
+  padding: 10px 4px;
+  width: 90px;
+  min-width: 90px;
+}
+
+.rr-mx-result {
+  text-align: center;
+  border: 1px solid var(--border);
+  padding: 8px 4px;
+  cursor: default;
+  width: 90px;
+  min-width: 90px;
+}
+.rr-mx-result.mx-w { background: rgba(46,204,113,0.08); }
+.rr-mx-result.mx-l { background: rgba(231,76,60,0.06); }
+.rr-mx-result.mx-d { background: rgba(122,139,170,0.08); }
+.rr-mx-result.mx-live { background: rgba(231,76,60,0.1); }
+
+.rr-mx-pending {
+  text-align: center;
+  border: 1px solid var(--border);
+  padding: 10px 4px;
+  background: var(--card);
+  width: 90px;
+  min-width: 90px;
+}
+
+/* Badge W / L / D */
+.mx-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  font-weight: 800;
+  font-size: 10px;
+  margin-bottom: 2px;
+}
+.mx-badge.mx-w    { background: rgba(46,204,113,0.2);  color: var(--green); }
+.mx-badge.mx-l    { background: rgba(231,76,60,0.2);   color: #ff8a80; }
+.mx-badge.mx-d    { background: rgba(122,139,170,0.2); color: var(--muted); }
+.mx-badge.mx-live { background: rgba(231,76,60,0.2);   color: var(--red); font-size: 14px; animation: blink 1s infinite; }
+
+.mx-score {
+  display: block;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1;
+}
+
+.mx-masa {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+@media (max-width: 500px) {
+  .rr-mx-head  { min-width: 55px; font-size: 10px; padding: 5px 4px; }
+  .rr-mx-label { font-size: 11px; padding: 6px 8px; max-width: 90px; }
+  .mx-score    { font-size: 11px; }
+}
+
+
+/* ================================================================
+   POPUP PILIHAN CETAK
+   ================================================================ */
+.pilihan-cetak-item {
+  display: block;
+  cursor: pointer;
+}
+.pilihan-cetak-item input[type="radio"] {
+  display: none;
+}
+.pilihan-cetak-item .pc-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  transition: all 0.15s;
+}
+.pilihan-cetak-item input:checked + .pc-label {
+  border-color: var(--gold);
+  background: rgba(245,166,35,0.06);
+}
+.pilihan-cetak-item .pc-label:hover {
+  border-color: rgba(245,166,35,0.5);
+}
+.pc-icon  { font-size: 24px; flex-shrink: 0; }
+.pc-nama  { font-weight: 600; font-size: 14px; color: var(--text); }
+.pc-desc  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+
+/* ================================================================
+   TAB KATEGORI (Badminton: Beregu L, Beregu W, dll)
+   ================================================================ */
+.kat-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.kat-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.kat-tab-btn:hover {
+  border-color: var(--gold);
+  color: var(--text);
+}
+.kat-tab-btn.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+}
+
+.kat-count {
+  font-size: 10px;
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+
+/* ================================================================
+   BADMINTON — SET SCORING + DRAW
+   ================================================================ */
+
+/* Set score row */
+.bdk-set-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: opacity 0.2s;
+}
+.bdk-set-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  width: 38px;
+  flex-shrink: 0;
+}
+.bdk-pasukan-nama {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bdk-score-inp {
+  width: 56px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+  font-family: 'Barlow Condensed', sans-serif;
+  padding: 6px 4px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.bdk-score-inp:focus {
+  border-color: var(--gold);
+  outline: none;
+}
+.bdk-vs {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* Preview */
+.bdk-preview {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  min-height: 36px;
+}
+.bdk-set-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.bdk-set-chip.r { background: rgba(46,204,113,0.15); color: #2ecc71; }
+.bdk-set-chip.t { background: rgba(231,76,60,0.12);  color: #e74c3c; }
+
+/* Mini set display in match card */
+.bdk-set-mini {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* ── DRAW BRACKET ── */
+.bdk-draw-wrap {
+  margin-top: 20px;
+  background: var(--card);
+  border: 1px solid rgba(245,166,35,0.25);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.bdk-draw-header {
+  background: linear-gradient(135deg, #0A1628, #162040);
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(245,166,35,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bdk-draw-grid {
+  display: grid;
+  gap: 0;
+  overflow-x: auto;
+  padding: 16px;
+  gap: 12px;
+}
+.bdk-draw-fasa {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 200px;
+}
+.bdk-draw-fasa-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.bdk-draw-kad {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.bdk-draw-kad.selesai { border-color: rgba(46,204,113,0.3); }
+.bdk-draw-kad.live    { border-color: rgba(231,76,60,0.5); }
+
+.bdk-draw-masa {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.15);
+}
+.bdk-draw-pasukan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  gap: 8px;
+  transition: background 0.15s;
+}
+.bdk-draw-pasukan.menang {
+  background: rgba(46,204,113,0.08);
+}
+.bdk-draw-pasukan.kalah {
+  opacity: 0.55;
+}
+.bdk-draw-nama {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bdk-draw-sets {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.bdk-draw-set {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--card);
+  color: var(--muted);
+}
+.bdk-draw-set.w {
+  background: rgba(46,204,113,0.2);
+  color: #2ecc71;
+}
+.bdk-draw-score-main {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.bdk-draw-divider {
+  height: 1px;
+  background: var(--border);
+}
+.bdk-live-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  padding: 3px;
+  background: rgba(231,76,60,0.15);
+  color: #e74c3c;
+  letter-spacing: 1px;
+}
+
+
+/* ================================================================
+   TOGGLE MAIN IKUT SET
+   ================================================================ */
+.toggle-set-wrap { display:inline-flex; align-items:center; }
+.toggle-set-track {
+  width: 36px; height: 20px;
+  background: var(--card2);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.toggle-set-track.on {
+  background: rgba(245,166,35,0.25);
+  border-color: var(--gold);
+}
+.toggle-set-thumb {
+  width: 14px; height: 14px;
+  background: var(--muted);
+  border-radius: 50%;
+  position: absolute;
+  top: 2px; left: 2px;
+  transition: transform 0.2s, background 0.2s;
+}
+.toggle-set-track.on .toggle-set-thumb {
+  background: var(--gold);
+  transform: translateX(16px);
+}
+>>>>>>> 2c89801 (feat: implement full bracket system for knockout tournaments)

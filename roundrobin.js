@@ -945,12 +945,16 @@ function renderRRKandungan(sukanId, sukan, rr) {
       <div class="rr-section">
         <div class="rr-section-title">
           <span>⚙️ Jana Jadual Perlawanan</span>
-          ${adaJadual ? `
-            <span class="count-chip" style="color:var(--green)">
-              ${selesai}/${perlawanan.length} selesai
-              ${live > 0 ? `· <span style="color:var(--red)">🔴 ${live} live</span>` : ''}
-            </span>
-          ` : ''}
+          <div style="display:flex;align-items:center;gap:8px">
+            ${adaJadual ? `
+              <span class="count-chip" style="color:var(--green)">
+                ${selesai}/${perlawanan.length} selesai
+                ${live > 0 ? `· <span style="color:var(--red)">🔴 ${live} live</span>` : ''}
+              </span>
+              <button class="staff-del" style="font-size:11px;padding:4px 10px"
+                onclick="rrPadamSemuaJadual('${sukanId}')">🗑 Padam Semua</button>
+            ` : ''}
+          </div>
         </div>
 
         <div class="rr-info-box">
@@ -958,40 +962,80 @@ function renderRRKandungan(sukanId, sukan, rr) {
           <strong>${bilPerlw} perlawanan</strong> (setiap pasukan lawan semua pasukan lain sekali).
           ${adaJadual ? `
             <br/>⚠️ Jana semula <strong>tidak padam score</strong> yang dah dimasuk.
-            Hanya tarikh & masa kosong bagi perlawanan baru.
           ` : `
-            <br/>Selepas jana, tetapkan tarikh, masa dan gelanggang untuk setiap perlawanan.
+            <br/>Tetapkan tarikh, masa dan gelanggang sebelum jana.
           `}
         </div>
+
+        <!-- Tetapan -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+          <div>
+            <div class="field-label">📅 Tarikh Mula</div>
+            <input type="date" id="rr-jana-tarikh-${sukanId}" class="field-input"
+              style="padding:8px 10px;font-size:13px"/>
+          </div>
+          <div>
+            <div class="field-label">🕐 Masa Mula</div>
+            <input type="time" id="rr-jana-masa-${sukanId}" class="field-input"
+              style="padding:8px 10px;font-size:13px" value="09:00"/>
+          </div>
+          <div>
+            <div class="field-label">⏱ Selang (minit)</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+              ${[30,45,60,90].map(m => `
+                <button type="button" class="selang-preset"
+                  onclick="document.getElementById('rr-jana-selang-${sukanId}').value='${m}'">
+                  ${m}m
+                </button>
+              `).join('')}
+              <button type="button" class="selang-preset"
+                onclick="document.getElementById('rr-jana-selang-${sukanId}').value='0'">
+                Tanpa masa
+              </button>
+            </div>
+            <input type="number" id="rr-jana-selang-${sukanId}" class="field-input"
+              style="padding:8px 10px;font-size:14px;max-width:120px"
+              min="0" value="60" placeholder="60"/>
+          </div>
+          <div>
+            <div class="field-label">📍 Bilangan Gelanggang</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+              ${[1,2,3,4].map(g => `
+                <button type="button" class="selang-preset"
+                  onclick="document.getElementById('rr-jana-gel-${sukanId}').value='${g}';rrKemaskiniNamaGelanggang('${sukanId}')">
+                  ${g}
+                </button>
+              `).join('')}
+            </div>
+            <input type="number" id="rr-jana-gel-${sukanId}" class="field-input"
+              style="padding:8px 10px;font-size:14px;max-width:100px"
+              min="1" max="10" value="1" placeholder="1"
+              oninput="rrKemaskiniNamaGelanggang('${sukanId}')"/>
+          </div>
+        </div>
+
+        <!-- Nama gelanggang (muncul bila >1) -->
+        <div id="rr-nama-gel-wrap-${sukanId}" style="margin-bottom:14px"></div>
 
         <button class="rr-jana-btn" onclick="rrJanaJadual('${sukanId}')">
           ⚙️ ${adaJadual ? 'Jana Semula Jadual' : 'Jana Jadual Sekarang'}
         </button>
+        ${adaJadual ? `
+          <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+            ✅ Jadual dah dijana. Pergi ke tab
+            <button onclick="setTab('jadual');state.jadualSukanTab='${sukanId}';render()"
+              style="background:none;border:none;color:var(--gold);cursor:pointer;font-size:12px;text-decoration:underline;padding:0">
+              📅 Jadual
+            </button>
+            untuk tetapkan tarikh/masa dan masuk score setiap perlawanan.
+          </div>
+        ` : ''}
       </div>
     ` : `
       <div class="rr-info-box">
         ℹ️ Tambah sekurang-kurangnya <strong>2 peserta</strong> untuk jana jadual perlawanan.
       </div>
     `}
-
-
-    <!-- ══════════════════════════════════
-         BAHAGIAN 3 — SENARAI PERLAWANAN
-    ══════════════════════════════════ -->
-    ${adaJadual ? `
-      <div class="rr-section">
-        <div class="rr-section-title">
-          <span>📋 Senarai Perlawanan</span>
-          <span style="font-size:12px;color:var(--muted)">
-            Klik ✏️ untuk tetapkan tarikh/masa/score
-          </span>
-        </div>
-
-        ${perlawanan.map((m, mi) =>
-          rrRenderKadEdit(sukanId, m, mi)
-        ).join('')}
-      </div>
-    ` : ''}
   `;
 }
 
@@ -1057,23 +1101,23 @@ function rrRenderKadEdit(sukanId, m, mi) {
             style="padding:9px 12px;font-size:14px;width:100%;max-width:280px"
             onchange="rrTogolScore(this.value, ${mi})">
             <option value="akan_datang"
-              ${m.status === 'akan_datang' ? 'selected' : ''}>
+              ${!state.rrEditPresetSelesai && m.status === 'akan_datang' ? 'selected' : ''}>
               📅 Akan Datang
             </option>
             <option value="sedang_berlangsung"
-              ${m.status === 'sedang_berlangsung' ? 'selected' : ''}>
+              ${!state.rrEditPresetSelesai && m.status === 'sedang_berlangsung' ? 'selected' : ''}>
               🔴 Sedang Berlangsung
             </option>
             <option value="selesai"
-              ${m.status === 'selesai' ? 'selected' : ''}>
+              ${state.rrEditPresetSelesai || m.status === 'selesai' ? 'selected' : ''}>
               ✓ Selesai
             </option>
           </select>
         </div>
 
-        <!-- Score (tunjuk bila bukan akan_datang) -->
+        <!-- Score (tunjuk bila preset selesai atau bukan akan_datang) -->
         <div id="rr-e-score-${mi}"
-          style="display:${m.status !== 'akan_datang' ? 'block' : 'none'}">
+          style="display:${state.rrEditPresetSelesai || m.status !== 'akan_datang' ? 'block' : 'none'}">
           <div class="score-edit-box">
             <div class="score-edit-label">⚽ Masukkan Score</div>
             <div class="score-edit-row">
@@ -1145,14 +1189,14 @@ function rrRenderKadEdit(sukanId, m, mi) {
       </div>
 
       <div class="perlawanan-actions">
-        ${m.status === 'sedang_berlangsung' ? `
+        ${m.status !== 'selesai' ? `
           <button class="aksi-btn selesai-btn"
-            onclick="rrMulaEdit('${sukanId}', ${mi})">
+            onclick="rrMulaEditSelesai('${sukanId}', ${mi})">
             ✓ Tamat + Score
           </button>
         ` : ''}
         <button class="aksi-btn" onclick="rrMulaEdit('${sukanId}', ${mi})">
-          ✏️ ${m.tarikh ? 'Edit' : 'Tetapkan Jadual'}
+          ✏️ Edit
         </button>
       </div>
     </div>
@@ -1241,63 +1285,126 @@ function renderJadualRoundRobinFormat(sukanId, _unused, isStaff) {
     </div>
   `;
 
-  /* ── Perlawanan ── */
-  if (perlawanan.length === 0) {
-    return jadualKedudukan + `
-      <div class="kosong-box" style="margin-top:12px">
-        Jadual perlawanan belum dijana. Hubungi staff.
-      </div>
-    `;
-  }
 
-  /* Tab hari */
-  const hari   = [...new Set(perlawanan.map(m => m.tarikh).filter(Boolean))].sort();
-  const aktif  = hariAktif(sukanId);
-  const tabHari = hari.length > 1 ? `
+  /* ── Toggle matrix state ── */
+  const matrixKey  = 'rrMatrix_' + sukanId;
+  const showMatrix = state[matrixKey] === true;
+
+  /* ── Butang toggle matrix ── */
+  const matrixToggleBtn = perlawanan.length > 0 ? `
+    <div style="margin-bottom:16px">
+      <button class="cetak-btn ${showMatrix ? 'active-mode' : ''}"
+        onclick="state['${matrixKey}']=!state['${matrixKey}'];render()">
+        🔲 ${showMatrix ? 'Sembunyi Matrix' : 'Tunjuk Jadual Matrix'}
+      </button>
+    </div>
+  ` : '';
+
+  /* ── Jadual Matrix (hanya bila toggle aktif) ── */
+  const matrixHTML = showMatrix && peserta.length >= 2 ? `
+    <div class="peringkat-blok" style="margin-bottom:16px">
+      <div class="peringkat-header" style="color:var(--muted)">🔲 Jadual Matrix</div>
+      <div style="overflow-x:auto">
+        <table class="rr-matrix">
+          <thead>
+            <tr>
+              <th class="rr-mx-corner"></th>
+              ${peserta.map(p => `
+                <th class="rr-mx-head" title="${p}">
+                  ${p.length > 12 ? p.slice(0,12) + '\u2026' : p}
+                </th>
+              `).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${peserta.map(rumah => `
+              <tr>
+                <td class="rr-mx-label" title="${rumah}">
+                  ${rumah.length > 14 ? rumah.slice(0,14) + '\u2026' : rumah}
+                </td>
+                ${peserta.map(tamu => {
+                  if (rumah === tamu) return '<td class="rr-mx-diag"></td>';
+                  const m = perlawanan.find(x =>
+                    (x.rumah === rumah && x.tamu === tamu) ||
+                    (x.rumah === tamu  && x.tamu === rumah)
+                  );
+                  if (!m) return '<td class="rr-mx-empty">—</td>';
+                  const isRumah = m.rumah === rumah;
+                  const skR = isRumah ? m.scoreRumah : m.scoreTamu;
+                  const skT = isRumah ? m.scoreTamu  : m.scoreRumah;
+                  if (m.status === 'selesai') {
+                    const cls = skR > skT ? 'mx-w' : skR < skT ? 'mx-l' : 'mx-d';
+                    const lbl = skR > skT ? 'W'    : skR < skT ? 'L'    : 'D';
+                    return '<td class="rr-mx-result ' + cls + '" title="' + rumah + ' ' + skR + '\u2014' + skT + ' ' + tamu + '"><span class="mx-badge ' + cls + '">' + lbl + '</span><span class="mx-score">' + skR + '\u2014' + skT + '</span></td>';
+                  } else if (m.status === 'sedang_berlangsung') {
+                    return '<td class="rr-mx-result mx-live"><span class="mx-badge mx-live">\u25cf</span><span class="mx-score">' + skR + '\u2014' + skT + '</span></td>';
+                  } else {
+                    return '<td class="rr-mx-pending"><span class="mx-masa">' + (m.masa || 'vs') + '</span></td>';
+                  }
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted)">
+        <span><span class="mx-badge mx-w" style="display:inline-flex">W</span> Menang</span>
+        <span><span class="mx-badge mx-l" style="display:inline-flex">L</span> Kalah</span>
+        <span><span class="mx-badge mx-d" style="display:inline-flex">D</span> Seri</span>
+        <span><span class="mx-badge mx-live" style="display:inline-flex">\u25cf</span> Live</span>
+        <span style="padding:1px 8px;background:var(--card2);border:1px solid var(--border);border-radius:4px">vs/masa</span> Akan Datang
+      </div>
+    </div>
+  ` : '';
+
+  /* ── Senarai perlawanan + edit cards ── */
+  const adaTarikh = perlawanan.some(m => m.tarikh);
+  const hariList  = [...new Set(perlawanan.map(m => m.tarikh).filter(Boolean))].sort();
+  const aktif     = hariAktif(sukanId);
+
+  const tabHari = hariList.length > 1 ? `
     <div class="hari-tab-wrap">
       <div class="hari-tab-bar">
-        ${hari.map(h => {
+        ${hariList.map(h => {
           const live = perlawanan.some(m => m.tarikh === h && m.status === 'sedang_berlangsung');
-          return `
-            <button class="hari-tab-btn ${h === aktif ? 'active' : ''}"
-              onclick="pilihHari('${h}','${sukanId}')">
-              ${formatTarikhPendek(h)}
-              ${live ? '<span class="live-dot"></span>' : ''}
-            </button>
-          `;
+          return `<button class="hari-tab-btn ${h === aktif ? 'active' : ''}"
+            onclick="pilihHari('${h}','${sukanId}')">
+            ${formatTarikhPendek(h)}${live ? '<span class="live-dot"></span>' : ''}
+          </button>`;
         }).join('')}
       </div>
     </div>
   ` : '';
 
-  /* Perlawanan hari aktif atau semua kalau tiada tarikh */
-  const adaTarikh = perlawanan.some(m => m.tarikh);
-  let senaraiBabar = '';
+  const papar = adaTarikh
+    ? perlawanan.filter(m => m.tarikh === aktif).sort((a,b) => (a.masa||'').localeCompare(b.masa||''))
+    : perlawanan;
 
-  if (!adaTarikh) {
-    senaraiBabar = `
-      <div class="peringkat-blok">
-        <div class="peringkat-header">📋 Semua Perlawanan</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-          Tarikh & masa belum ditetapkan.
-        </div>
-        ${perlawanan.map(m => rrRenderKadAwam(m, isStaff, sukanId)).join('')}
+  const hdrLabel = adaTarikh && aktif ? formatTarikh(aktif) : 'Semua Perlawanan';
+
+  const senaraiBabar = perlawanan.length === 0 ? `
+    <div class="kosong-box">
+      Jadual perlawanan belum dijana.
+      ${isStaff ? ' Klik "<strong>⚙️ Tetapan → Round Robin</strong>" untuk jana.' : ''}
+    </div>
+  ` : `
+    ${tabHari}
+    <div class="peringkat-blok">
+      <div class="peringkat-header" style="display:flex;align-items:center;justify-content:space-between">
+        <span>📋 ${hdrLabel}</span>
+        ${isStaff ? '<span style="font-size:11px;font-weight:400;color:var(--muted)">Klik ✏️ untuk edit tarikh/masa/score</span>' : ''}
       </div>
-    `;
-  } else {
-    const pHari = perlawanan
-      .filter(m => m.tarikh === aktif)
-      .sort((a, b) => (a.masa || '').localeCompare(b.masa || ''));
+      ${papar.length === 0
+        ? '<div class="kosong-box">Tiada perlawanan pada hari ini.</div>'
+        : papar.map(m => {
+            const mi = perlawanan.indexOf(m);
+            return isStaff ? rrRenderKadEdit(sukanId, m, mi) : rrRenderKadAwam(m, false, sukanId);
+          }).join('')
+      }
+    </div>
+  `;
 
-    senaraiBabar = tabHari + (pHari.length > 0 ? `
-      <div class="peringkat-blok">
-        <div class="peringkat-header">📅 ${formatTarikh(aktif)}</div>
-        ${pHari.map(m => rrRenderKadAwam(m, isStaff, sukanId)).join('')}
-      </div>
-    ` : `<div class="kosong-box">Tiada perlawanan pada hari ini.</div>`);
-  }
-
-  return jadualKedudukan + senaraiBabar;
+  return jadualKedudukan + matrixToggleBtn + matrixHTML + senaraiBabar;
 }
 
 
@@ -1408,12 +1515,14 @@ function semakAutoStatusRR() {
 
   Object.entries(state.roundRobin).forEach(([sukanId, rr]) => {
     if (!rr?.perlawanan) return;
-    const durasi = DURASI_SUKAN[sukanId] ?? 60;
 
     rr.perlawanan.forEach(m => {
       if (m.status === 'selesai' || !m.tarikh || !m.masa) return;
-      const masaMula = new Date(m.tarikh + 'T' + m.masa + ':00');
-      if (sekarang >= masaMula && m.status === 'akan_datang') {
+      const masaMula  = new Date(m.tarikh + 'T' + m.masa + ':00');
+      const bezaJam   = (sekarang - masaMula) / 3600000;
+
+      /* Jadi LIVE hanya kalau dalam masa 4 jam dari masa mula */
+      if (bezaJam >= 0 && bezaJam < 4 && m.status === 'akan_datang') {
         m.status = 'sedang_berlangsung';
         berubah  = true;
       }
@@ -1470,55 +1579,171 @@ function rrPadamPeserta(sukanId, pi) {
 }
 
 /* Jana semua perlawanan */
+function rrKemaskiniNamaGelanggang(sukanId) {
+  const bilEl = document.getElementById('rr-jana-gel-' + sukanId);
+  const wrap  = document.getElementById('rr-nama-gel-wrap-' + sukanId);
+  if (!bilEl || !wrap) return;
+  const bil = Math.max(1, Math.min(10, parseInt(bilEl.value) || 1));
+  if (bil <= 1) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `
+    <div class="field-label" style="margin-bottom:8px">📍 Nama Gelanggang (boleh edit)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
+      ${Array.from({length: bil}, (_, i) => `
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Gelanggang ${i+1}</div>
+          <input type="text" id="rr-gel-nama-${sukanId}-${i}"
+            class="field-input" style="padding:7px 10px;font-size:13px"
+            value="Gelanggang ${String.fromCharCode(65+i)}" placeholder="Nama gelanggang"/>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 function rrJanaJadual(sukanId) {
   const rr      = rrPastikan(sukanId);
   const peserta = rr.peserta;
   if (peserta.length < 2) { alert('Tambah sekurang-kurangnya 2 peserta dahulu.'); return; }
+
+  /* Baca tetapan dari form */
+  const tarikhMula    = document.getElementById('rr-jana-tarikh-' + sukanId)?.value || '';
+  const masaMula      = document.getElementById('rr-jana-masa-'   + sukanId)?.value || '09:00';
+  const selang        = parseInt(document.getElementById('rr-jana-selang-' + sukanId)?.value) || 0;
+  const bilGelanggang = Math.max(1, parseInt(document.getElementById('rr-jana-gel-' + sukanId)?.value) || 1);
+
+  const namaGelanggang = Array.from({length: bilGelanggang}, (_, i) => {
+    const inp = document.getElementById('rr-gel-nama-' + sukanId + '-' + i);
+    return inp?.value?.trim() || 'Gelanggang ' + String.fromCharCode(65 + i);
+  });
 
   /* Kekal score lama */
   const scoreLama = {};
   (rr.perlawanan || []).forEach(m => {
     const key = [m.rumah, m.tamu].sort().join('|||');
     scoreLama[key] = {
-      scoreRumah: m.scoreRumah, scoreTamu:  m.scoreTamu,
-      status:     m.status,     tarikh:     m.tarikh,
-      masa:       m.masa,       gelanggang: m.gelanggang,
+      scoreRumah: m.scoreRumah, scoreTamu: m.scoreTamu,
+      status: m.status, tarikh: m.tarikh,
+      masa: m.masa, gelanggang: m.gelanggang,
     };
   });
 
-  const baru = [];
-  for (let i = 0; i < peserta.length; i++) {
-    for (let j = i + 1; j < peserta.length; j++) {
-      const key  = [peserta[i], peserta[j]].sort().join('|||');
-      const lama = scoreLama[key] || {};
-      baru.push({
-        id:         sukanId + '_rr_' + i + '_' + j + '_' + Date.now(),
-        rumah:      peserta[i],
-        tamu:       peserta[j],
-        tarikh:     lama.tarikh     || '',
-        masa:       lama.masa       || '',
-        gelanggang: lama.gelanggang || '',
-        status:     lama.status     || 'akan_datang',
-        scoreRumah: lama.scoreRumah ?? 0,
-        scoreTamu:  lama.scoreTamu  ?? 0,
-      });
-    }
+  /* Jana semua pasangan */
+  const semuaPasangan = [];
+  for (let i = 0; i < peserta.length; i++)
+    for (let j = i + 1; j < peserta.length; j++)
+      semuaPasangan.push({ rumah: peserta[i], tamu: peserta[j] });
+
+  /* ══ ALGORITMA SUSUN — elak pasukan main berturut-turut ══ */
+  const tersusun = [], berbaki = [...semuaPasangan], lastMain = {};
+
+  while (berbaki.length > 0) {
+    const slot  = tersusun.length;
+    const lepas = slot > 0 ? tersusun[slot - 1] : null;
+
+    /* Kategorikan: [0] tak clash, [1] terpaksa clash */
+    const calon = [], terpaksa = [];
+    berbaki.forEach((m, i) => {
+      const clash = lepas &&
+        (m.rumah === lepas.rumah || m.rumah === lepas.tamu ||
+         m.tamu  === lepas.rumah || m.tamu  === lepas.tamu);
+      if (!clash) calon.push(i); else terpaksa.push(i);
+    });
+
+    const pool = calon.length > 0 ? calon : terpaksa;
+
+    /* Dalam pool, pilih pasangan yang pasukannya paling lama berehat */
+    const pil = pool.reduce((best, i) => {
+      const m  = berbaki[i], mb = berbaki[best];
+      const rM = (slot - (lastMain[m.rumah]  ?? -999)) + (slot - (lastMain[m.tamu]  ?? -999));
+      const rB = (slot - (lastMain[mb.rumah] ?? -999)) + (slot - (lastMain[mb.tamu] ?? -999));
+      return rM > rB ? i : best;
+    });
+
+    const d = berbaki.splice(pil, 1)[0];
+    lastMain[d.rumah] = slot;
+    lastMain[d.tamu]  = slot;
+    tersusun.push(d);
   }
 
+  /* ══ TETAPKAN MASA & GELANGGANG ══
+     N gelanggang → N perlawanan serentak (masa sama),
+     masa naik setiap N slot.
+  */
+  const masaBase = tarikhMula && masaMula
+    ? new Date(tarikhMula + 'T' + masaMula + ':00') : null;
+
+  const baru = tersusun.map((p, idx) => {
+    const key      = [p.rumah, p.tamu].sort().join('|||');
+    const lama     = scoreLama[key] || {};
+    const slotMasa = Math.floor(idx / bilGelanggang);
+    const noGelang = idx % bilGelanggang;
+
+    let tarikh = lama.tarikh || '';
+    let masa   = lama.masa   || '';
+    let gelang = lama.gelanggang || namaGelanggang[noGelang];
+
+    if (!lama.gelanggang) gelang = namaGelanggang[noGelang];
+
+    if (!lama.tarikh && masaBase) {
+      const ms = selang > 0
+        ? new Date(masaBase.getTime() + slotMasa * selang * 60000)
+        : masaBase;
+      tarikh = ms.toISOString().split('T')[0];
+      masa   = ms.toTimeString().slice(0, 5);
+    }
+
+    return {
+      id:         sukanId + '_rr_' + idx + '_' + Date.now(),
+      rumah:      p.rumah,
+      tamu:       p.tamu,
+      tarikh, masa,
+      gelanggang: gelang,
+      status:     lama.status     || 'akan_datang',
+      scoreRumah: lama.scoreRumah ?? 0,
+      scoreTamu:  lama.scoreTamu  ?? 0,
+    };
+  });
+
   rr.perlawanan = baru;
+  simpanData();
+
+  const bilSlot    = Math.ceil(baru.length / bilGelanggang);
+  const infoGelang = bilGelanggang > 1
+    ? `\n📍 ${bilGelanggang} gelanggang: ${namaGelanggang.join(', ')}\n⏱ ${bilSlot} slot masa (${bilGelanggang} serentak)`
+    : '';
+  alert('✅ ' + baru.length + ' perlawanan dijana.' + infoGelang + '\n\nSetiap pasukan rehat ≥1 perlawanan sebelum main semula.');
+  render();
+}
+
+/* Padam semua jadual round robin */
+function rrPadamSemuaJadual(sukanId) {
+  const rr = state.roundRobin[sukanId];
+  if (!rr?.perlawanan?.length) return;
+  const bil = rr.perlawanan.length;
+  if (!confirm('Padam semua ' + bil + ' perlawanan round robin?\n\nScore & keputusan juga akan dipadam.')) return;
+  rr.perlawanan = [];
   simpanData();
   render();
 }
 
 /* Mula edit perlawanan */
 function rrMulaEdit(sukanId, mi) {
-  state.rrEditingMatch = sukanId + '___' + mi;
+  state.rrEditingMatch     = sukanId + '___' + mi;
+  state.rrEditPresetSelesai = false;
+  render();
+}
+
+/* Tamat + Score — buka edit dengan status selesai dipilih */
+function rrMulaEditSelesai(sukanId, mi) {
+  state.rrEditingMatch      = sukanId + '___' + mi;
+  state.rrEditPresetSelesai = true;
   render();
 }
 
 /* Batal edit */
 function rrBatalEdit() {
-  state.rrEditingMatch = null;
+  state.rrEditingMatch      = null;
+  state.rrEditPresetSelesai = false;
   render();
 }
 
@@ -1541,7 +1766,8 @@ function rrSimpanPerlawanan(sukanId, mi) {
   m.scoreRumah = parseInt(document.getElementById('rr-e-sr-' + mi)?.value) || 0;
   m.scoreTamu  = parseInt(document.getElementById('rr-e-st-' + mi)?.value) || 0;
 
-  state.rrEditingMatch = null;
+  state.rrEditingMatch      = null;
+  state.rrEditPresetSelesai = false;
   simpanData();
   render();
 }

@@ -1462,7 +1462,14 @@ function sukanTabAktif() {
    ── Bila klik sukan → tunjuk jadual sukan tersebut
    ================================================================ */
 function renderJadual() {
-  if (state.editingPerlawanan) return renderFormEditPerlawanan();
+  if (state.editingPerlawanan && state.editingPerlawanan !== 'BAHARU') {
+    const p = state.jadual.find(m => m.id === state.editingPerlawanan);
+    if (p && typeof adaBadminton === 'function' && adaBadminton(p.sukanId)) {
+      return renderJadualSukan(); /* biar renderKadPerlawanan handle */
+    }
+    return renderFormEditPerlawanan();
+  }
+  if (state.editingPerlawanan === 'BAHARU') return renderFormEditPerlawanan();
 
   /* Kalau sukan dah dipilih → tunjuk jadual sukan */
   if (state.jadualSukanTab) return renderJadualSukan();
@@ -1479,26 +1486,36 @@ function renderJadual() {
     const fmt = state.formatSukan[s.id] || 'biasa';
 
     let selesai = 0, berlangsung = 0, total = 0;
+
     if (fmt === 'round_robin') {
       const prl = state.roundRobin[s.id]?.perlawanan || [];
       selesai     = prl.filter(m => m.status === 'selesai').length;
       berlangsung = prl.filter(m => m.status === 'sedang_berlangsung').length;
       total       = prl.length;
     } else {
+      /* Jadual biasa + bracket (suku akhir, separuh akhir, final) */
       const pSukan = state.jadual.filter(m => m.sukanId === s.id);
-      selesai      = pSukan.filter(m => m.status === 'selesai').length;
-      berlangsung  = pSukan.filter(m => m.status === 'sedang_berlangsung').length;
-      total        = pSukan.length;
+      const bPrl   = fmt === 'kumpulan'
+        ? Object.values(state.bracket?.[s.id] || {}).flat()
+        : [];
+      const semua  = [...pSukan, ...bPrl];
+
+      selesai     = semua.filter(m => m.status === 'selesai').length;
+      berlangsung = semua.filter(m => m.status === 'sedang_berlangsung').length;
+      total       = semua.length;
     }
 
     const formatLabel = fmt === 'kumpulan'    ? '🔵 Format Kumpulan'
                       : fmt === 'round_robin' ? '🔄 Round Robin'
                       : '🎯 Perlawanan';
 
+    /* "Siap" hanya bila semua perlawanan selesai TERMASUK bracket */
+    const siap = total > 0 && selesai === total;
+
     return `
       <div class="jadual-sukan-kad" onclick="pilihJadualSukan('${s.id}')">
         ${berlangsung > 0 ? '<span class="done-badge" style="background:var(--red)">🔴 LIVE</span>' : ''}
-        ${selesai === total && total > 0 ? '<span class="done-badge">✓ Siap</span>' : ''}
+        ${siap ? '<span class="done-badge">✓ Siap</span>' : ''}
 
         <div class="jadual-sukan-icon">${s.icon || '🏅'}</div>
         <div class="jadual-sukan-nama">${s.nama}</div>
@@ -1534,9 +1551,15 @@ function renderJadualSukan() {
 
   const format          = state.formatSukan[sukanId] || 'biasa';
   const perlawananSukan = state.jadual.filter(m => m.sukanId === sukanId);
-  const selesai         = perlawananSukan.filter(m => m.status === 'selesai').length;
-  const berlangsung     = perlawananSukan.filter(m => m.status === 'sedang_berlangsung').length;
-  const akanDatang      = perlawananSukan.filter(m => m.status === 'akan_datang').length;
+
+  /* Kira stats termasuk bracket */
+  const bracketPrl = format === 'kumpulan'
+    ? Object.values(state.bracket?.[sukanId] || {}).flat()
+    : [];
+  const semuaPrl    = [...perlawananSukan, ...bracketPrl];
+  const selesai     = semuaPrl.filter(m => m.status === 'selesai').length;
+  const berlangsung = semuaPrl.filter(m => m.status === 'sedang_berlangsung').length;
+  const akanDatang  = semuaPrl.filter(m => m.status === 'akan_datang').length;
 
   /* Stats bar */
   const statsHTML = `
@@ -1557,49 +1580,160 @@ function renderJadualSukan() {
   `;
 
   /* Butang tambah — sembunyi untuk round robin (guna Urus Round Robin) */
-  const tambahBtn = isStaff && format !== 'round_robin' ? `
-    <div style="margin-bottom:16px">
-      <button class="tambah-perlawanan-btn" onclick="bukaFormTambah()">
-        + Tambah Perlawanan
-      </button>
-    </div>
-  ` : isStaff && format === 'round_robin' ? `
+  const tambahBtn = isStaff && format === 'round_robin' ? `
     <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="tambah-perlawanan-btn" style="background:var(--card);color:var(--green);border:1.5px solid rgba(46,204,113,0.5)"
         onclick="setTab('tetapan');state.subTab='round_robin';state.rrSukanTab='${sukanId}';render()">
         🔄 Urus Round Robin →
       </button>
-      <span style="font-size:12px;color:var(--muted)">
-        Jana jadual & tetapkan tarikh/score dalam Tetapan
-      </span>
+    </div>
+  ` : isStaff && format === 'kumpulan' ? `
+    <div style="margin-bottom:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="tambah-perlawanan-btn" onclick="bukaFormTambah()">
+        + Tambah Perlawanan
+      </button>
+      ${state.jadual.some(m => m.sukanId === sukanId && m.peringkat === 'kumpulan') ? `
+        <button class="cetak-btn" style="color:#ff8a80;border-color:rgba(231,76,60,0.4)"
+          onclick="padamSemuaJadualDariJadualTab('${sukanId}')">
+          🗑 Reset Jadual Kumpulan
+        </button>
+      ` : ''}
+      <button class="cetak-btn"
+        onclick="setTab('tetapan');state.subTab='urus_kumpulan';state.kumpulanSukanTab='${sukanId}';render()">
+        🔵 Urus Kumpulan →
+      </button>
+    </div>
+  ` : isStaff ? `
+    <div style="margin-bottom:16px">
+      <button class="tambah-perlawanan-btn" onclick="bukaFormTambah()">
+        + Tambah Perlawanan
+      </button>
     </div>
   ` : '';
 
-  /* Kandungan ikut format */
+  /* Kandungan ikut format atau jadual penuh */
   let kandungan = '';
-  if (format === 'kumpulan')       kandungan = renderJadualKumpulanFormat(sukanId, perlawananSukan, isStaff);
-  else if (format === 'round_robin') kandungan = renderJadualRoundRobinFormat(sukanId, perlawananSukan, isStaff);
-  else                               kandungan = renderJadualBiasaFormat(sukanId, perlawananSukan, isStaff);
+  if (state.jadualPenuhMode === sukanId) {
+    kandungan = renderJadualPenuh(sukanId, format);
+  } else if (format === 'kumpulan') {
+    /* Tunjuk tab kategori kalau ada lebih 1 kategori */
+    const kategoriKumpulan = [...new Set(perlawananSukan.map(m => m.kategori).filter(Boolean))];
+    const katAktif = (state.selectedKategori?.[sukanId] && kategoriKumpulan.includes(state.selectedKategori[sukanId]))
+      ? state.selectedKategori[sukanId] : null;
+
+    const tabKatHTML = kategoriKumpulan.length > 1 ? `
+      <div class="kat-tab-bar">
+        <button class="kat-tab-btn ${!katAktif ? 'active' : ''}"
+          onclick="pilihKategori('${sukanId}', null)">📋 Semua</button>
+        ${kategoriKumpulan.map(k => {
+          const bilK = perlawananSukan.filter(m => m.kategori === k).length;
+          const slsK = perlawananSukan.filter(m => m.kategori === k && m.status === 'selesai').length;
+          const liveK = perlawananSukan.filter(m => m.kategori === k && m.status === 'sedang_berlangsung').length;
+          return `
+            <button class="kat-tab-btn ${katAktif === k ? 'active' : ''}"
+              data-kat="${k}"
+              onclick="pilihKategori('${sukanId}', this.dataset.kat)">
+              ${liveK > 0 ? '<span class="live-dot" style="width:6px;height:6px"></span>' : ''}
+              ${k}<span class="kat-count">${slsK}/${bilK}</span>
+            </button>`;
+        }).join('')}
+      </div>
+    ` : '';
+
+    const pTapisKump = katAktif ? perlawananSukan.filter(m => m.kategori === katAktif) : perlawananSukan;
+    kandungan = tabKatHTML + renderJadualKumpulanFormat(sukanId, pTapisKump, isStaff, katAktif);
+  } else if (format === 'round_robin') {
+    kandungan = renderJadualRoundRobinFormat(sukanId, perlawananSukan, isStaff);
+  } else {
+    /* Format biasa — tunjuk tab kategori kalau ada lebih 1 */
+    const kategoriSukan = [...new Set(perlawananSukan.map(m => m.kategori).filter(Boolean))];
+    const katAktif = (state.selectedKategori?.[sukanId] && kategoriSukan.includes(state.selectedKategori[sukanId]))
+      ? state.selectedKategori[sukanId]
+      : null;  /* null = semua */
+
+    const tabKatHTML = kategoriSukan.length > 1 ? `
+      <div class="kat-tab-bar">
+        <button class="kat-tab-btn ${!katAktif ? 'active' : ''}"
+          onclick="pilihKategori('${sukanId}', null)">
+          📋 Semua
+        </button>
+        ${kategoriSukan.map(k => {
+          const bilLive = perlawananSukan.filter(m => m.kategori === k && m.status === 'sedang_berlangsung').length;
+          const bilKat  = perlawananSukan.filter(m => m.kategori === k).length;
+          const selesaiKat = perlawananSukan.filter(m => m.kategori === k && m.status === 'selesai').length;
+          return `
+            <button class="kat-tab-btn ${katAktif === k ? 'active' : ''}"
+              data-kat="${k}" onclick="pilihKategori('${sukanId}', this.dataset.kat)">
+              ${bilLive > 0 ? '<span class="live-dot" style="width:6px;height:6px"></span>' : ''}
+              ${k}
+              <span class="kat-count">${selesaiKat}/${bilKat}</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    ` : '';
+
+    const pTapis = katAktif
+      ? perlawananSukan.filter(m => m.kategori === katAktif)
+      : perlawananSukan;
+
+    kandungan = tabKatHTML + renderJadualBiasaFormat(sukanId, pTapis, isStaff);
+  }
+
+  const modePenuh  = state.jadualPenuhMode === sukanId;
+  const modeDraw   = state.drawMode === sukanId;
+  const isBadminton = typeof adaBadminton === 'function' && adaBadminton(sukanId);
+  const adaDraw = isBadminton && state.bracket?.[sukanId] &&
+    ['suku_akhir','separuh_akhir','final'].some(f => (state.bracket[sukanId][f]||[]).length > 0);
 
   return `
-    <button class="back-btn" onclick="balikGridJadual()">← Semua Sukan</button>
-    <div class="section-title">${sukanKini.icon || '🏅'} ${sukanKini.nama}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+      <button class="back-btn" style="margin-bottom:0" onclick="balikGridJadual()">← Semua Sukan</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${adaDraw ? `
+          <button class="cetak-btn ${modeDraw?'active-mode':''}"
+            onclick="togolDrawMode('${sukanId}')">
+            🎯 ${modeDraw?'Tutup Draw':'DRAW'}
+          </button>
+        ` : ''}
+        <button class="cetak-btn ${modePenuh ? 'active-mode' : ''}"
+          onclick="togolJadualPenuh('${sukanId}')">
+          ${modePenuh ? '📅 Jadual Biasa' : '📋 Jadual Penuh'}
+        </button>
+        <button class="cetak-btn" onclick="bukaCetakJadual('${sukanId}')">
+          🖨️ Cetak / PDF
+        </button>
+      </div>
+    </div>
+    <div class="section-title" style="margin-top:12px">${sukanKini.icon || '🏅'} ${sukanKini.nama}</div>
     ${statsHTML}
-    ${tambahBtn}
-    ${kandungan}
+    ${modeDraw ? renderDrawBadminton(sukanId) : ''}
+    ${modeDraw ? '' : (modePenuh ? '' : tambahBtn)}
+    ${modeDraw ? '' : kandungan}
   `;
 }
 
 
+
 /* ================================================================
    FORMAT KUMPULAN (Bola Sepak, Futsal, dll)
-   Perlawanan dipisah ikut hari dengan tab hari.
    ================================================================ */
-function renderJadualKumpulanFormat(sukanId, senarai, isStaff) {
-  const kumpulan = state.kumpulanSukan[sukanId] || [];
+function renderJadualKumpulanFormat(sukanId, senarai, isStaff, katAktif) {
+  /* Cari katKey yang sepadan dengan kategori aktif */
+  let katKey = sukanId;
+  if (katAktif) {
+    /* Cari acara yang namanya sama dengan katAktif */
+    const sukanKini = state.sukan.find(s => s.id === sukanId);
+    const acara = sukanKini?.acara?.find(a => a.nama === katAktif);
+    if (acara) katKey = sukanId + '___' + acara.id;
+  }
+
+  /* Ambil kumpulan ikut katKey yang betul sahaja */
+  const kumpulan = state.kumpulanSukan[katKey] || [];
   const hari     = [...new Set(senarai.map(m => m.tarikh).filter(Boolean))].sort();
   const aktif    = hariAktif(sukanId);
 
+  /* ── Tab hari ── */
   const tabHariHTML = hari.length > 1 ? `
     <div class="hari-tab-wrap">
       <div class="hari-tab-bar">
@@ -1620,12 +1754,19 @@ function renderJadualKumpulanFormat(sukanId, senarai, isStaff) {
   /* Perlawanan hari ini */
   const pHari = senarai
     .filter(m => m.tarikh === aktif)
-    .sort((a,b) => a.masa.localeCompare(b.masa));
+    .sort((a,b) => (a.masa||'').localeCompare(b.masa||''));
 
   if (!aktif || pHari.length === 0) {
-    return tabHariHTML + (senarai.length === 0
-      ? `<div class="kosong-box"><div style="font-size:36px;margin-bottom:10px">📅</div>Tiada jadual lagi. ${isStaff ? 'Tambah perlawanan di atas.' : ''}</div>`
-      : `<div class="kosong-box">Tiada perlawanan pada hari ini.</div>`);
+    /* Semak ada bracket walaupun tiada perlawanan kumpulan hari ini */
+    const fasaBracket2 = ['suku_akhir','separuh_akhir','tempat_ketiga','final'];
+    const adaBracket2  = fasaBracket2.some(f => (state.bracket?.[sukanId]?.[f]?.length || 0) > 0);
+    const bracketEarly = adaBracket2 ? renderBracketJadual(sukanId, isStaff) : '';
+
+    const kosongMsg = senarai.length === 0
+      ? `<div class="kosong-box"><div style="font-size:36px;margin-bottom:10px">📅</div>Tiada jadual kumpulan lagi. ${isStaff ? 'Jana jadual dalam Tetapan.' : ''}</div>`
+      : `<div class="kosong-box">Tiada perlawanan kumpulan pada hari ini.</div>`;
+
+    return tabHariHTML + kosongMsg + bracketEarly;
   }
 
   /* Asingkan ikut peringkat */
@@ -1636,25 +1777,61 @@ function renderJadualKumpulanFormat(sukanId, senarai, isStaff) {
     ikutPeringkat[k].push(m);
   });
 
+  /* Peringkat bracket (suku akhir, separuh akhir, final) */
+  const fasaBracket = ['suku_akhir','separuh_akhir','tempat_ketiga','final'];
+  const adaBracketHere = fasaBracket.some(f =>
+    (state.bracket?.[sukanId]?.[f]?.length || 0) > 0
+  );
+
+  /* ── Tab lompat kumpulan ── */
+  const kumpulanDalamHari = ikutPeringkat['kumpulan']
+    ? [...new Set(ikutPeringkat['kumpulan'].map(m => m.kumpulan))].sort()
+    : [];
+
+  const tabKumpulanHTML = (kumpulanDalamHari.length > 1 || adaBracketHere) ? `
+    <div class="kump-tab-bar">
+      <span class="kump-tab-label">Lompat ke:</span>
+      ${kumpulanDalamHari.map(kid => {
+        const k       = kumpulan.find(g => g.id === kid);
+        const bilLive = (ikutPeringkat['kumpulan']||[])
+          .filter(m => m.kumpulan===kid && m.status==='sedang_berlangsung').length;
+        return `
+          <button class="kump-tab-btn"
+            onclick="document.getElementById('kump-${sukanId}-${kid}')?.scrollIntoView({behavior:'smooth',block:'start'})">
+            ${bilLive>0?'<span class="live-dot" style="width:6px;height:6px;flex-shrink:0"></span>':'🔵'}
+            ${k?.nama||'Kumpulan '+kid}
+          </button>
+        `;
+      }).join('')}
+      ${fasaBracket.filter(f => (state.bracket?.[sukanId]?.[f]?.length||0)>0).map(f => `
+        <button class="kump-tab-btn kump-tab-knockout"
+          onclick="document.getElementById('peringkat-${sukanId}-${f}')?.scrollIntoView({behavior:'smooth',block:'start'})">
+          ${{suku_akhir:'⚔️ Suku Akhir',separuh_akhir:'🥊 Separuh Akhir',tempat_ketiga:'🥉 Tempat Ke-3',final:'🏆 Final'}[f]||f}
+        </button>
+      `).join('')}
+    </div>
+  ` : '';
+
   const susunan = ['kumpulan','kumpulan_utama','suku_akhir','separuh_akhir','separuh','tempat_ketiga','akhir','final','lain'];
-  let html = tabHariHTML + `<div class="tarikh-penuh">${formatTarikh(aktif)}</div>`;
+  let html = tabHariHTML + `<div class="tarikh-penuh">${formatTarikh(aktif)}</div>` + tabKumpulanHTML;
 
   susunan.forEach(p => {
     if (!ikutPeringkat[p]) return;
-    html += `<div class="peringkat-blok"><div class="peringkat-header">${labelPeringkat(p)}</div>`;
+    html += `<div class="peringkat-blok" id="peringkat-${sukanId}-${p}">
+      <div class="peringkat-header">${labelPeringkat(p)}</div>`;
 
     if (p === 'kumpulan') {
-      /* Kumpul ikut kumpulan */
       const byKump = {};
       ikutPeringkat[p].forEach(m => {
         if (!byKump[m.kumpulan]) byKump[m.kumpulan] = [];
         byKump[m.kumpulan].push(m);
       });
       Object.entries(byKump).sort().forEach(([kid, matches]) => {
+        const k = kumpulan.find(g => g.id === kid);
         html += `
-          <div class="kumpulan-blok">
-            <div class="kumpulan-nama">🔵 Kumpulan ${kid}</div>
-            ${renderJadualKedudukan(sukanId, kid)}
+          <div class="kumpulan-blok" id="kump-${sukanId}-${kid}">
+            <div class="kumpulan-nama">🔵 ${k?.nama || 'Kumpulan ' + kid}</div>
+            ${renderJadualKedudukan(sukanId, kid, katKey)}
             <div class="kumpulan-perlawanan">
               ${matches.map(m => renderKadPerlawanan(m, isStaff)).join('')}
             </div>
@@ -1668,7 +1845,46 @@ function renderJadualKumpulanFormat(sukanId, senarai, isStaff) {
     html += `</div>`;
   });
 
-  return html;
+  /* ── Perlawanan peringkat seterusnya TANPA tarikh (suku akhir, final dll) ── */
+  const tanpaTarikhKO = senarai.filter(m =>
+    !m.tarikh && m.peringkat && m.peringkat !== 'kumpulan'
+  );
+
+  if (tanpaTarikhKO.length > 0) {
+    /* Kumpul ikut peringkat */
+    const byPeringkat = {};
+    tanpaTarikhKO.forEach(m => {
+      const p = m.peringkat || 'lain';
+      if (!byPeringkat[p]) byPeringkat[p] = [];
+      byPeringkat[p].push(m);
+    });
+
+    susunan.filter(p => p !== 'kumpulan').forEach(p => {
+      if (!byPeringkat[p]) return;
+      html += `
+        <div class="peringkat-blok" id="peringkat-${sukanId}-${p}"
+          style="border-color:rgba(245,166,35,0.25)">
+          <div class="peringkat-header" style="color:var(--gold)">
+            ${labelPeringkat(p)}
+            <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:8px">
+              — Tarikh belum ditetapkan
+            </span>
+          </div>
+          ${isStaff ? `
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+              Klik ✏️ Edit untuk tetapkan tarikh & masa.
+            </div>
+          ` : ''}
+          ${byPeringkat[p].map(m => renderKadPerlawanan(m, isStaff)).join('')}
+        </div>
+      `;
+    });
+  }
+
+  /* ── Bracket (Suku Akhir → Final) ── */
+  const bracketHTML = adaBracketHere ? renderBracketJadual(sukanId, isStaff) : '';
+
+  return html + bracketHTML;
 }
 
 
@@ -1741,8 +1957,16 @@ function renderJadualBiasaFormat(sukanId, senarai, isStaff) {
 /* NOTE: renderJadualRoundRobinFormat is defined in roundrobin.js */
 
 
-function renderJadualKedudukan(sukanId, kumpulanId) {
-  const kumpulanData = (state.kumpulanSukan[sukanId] || []).find(k => k.id === kumpulanId);
+function renderJadualKedudukan(sukanId, kumpulanId, katKey) {
+  /* Guna katKey yang dihantar, atau cari sendiri */
+  if (!katKey) {
+    katKey = Object.keys(state.kumpulanSukan).find(k =>
+      (k === sukanId || k.startsWith(sukanId + '___')) &&
+      (state.kumpulanSukan[k] || []).some(g => g.id === kumpulanId)
+    ) || sukanId;
+  }
+  const semua = state.kumpulanSukan[katKey] || [];
+  const kumpulanData = semua.find(k => k.id === kumpulanId);
   if (!kumpulanData) return '';
 
   const pasukan  = kumpulanData.pasukan;
@@ -1815,6 +2039,15 @@ function renderJadualKedudukan(sukanId, kumpulanId) {
    KAD PERLAWANAN
    ================================================================ */
 function renderKadPerlawanan(p, isStaff) {
+  /* Badminton — guna form set khas */
+  const isBdk = typeof adaBadminton === 'function' && adaBadminton(p.sukanId);
+
+  /* Kalau dalam mod edit — tunjuk form */
+  if (isStaff && state.editingPerlawanan === p.id) {
+    if (isBdk) return renderFormSetBadminton(p.sukanId, p.id, false, '', 0);
+    return renderFormEditPerlawanan();
+  }
+
   const statusKls   = p.status === 'selesai' ? 'selesai'
                     : p.status === 'sedang_berlangsung' ? 'berlangsung'
                     : 'akan-datang';
@@ -1846,17 +2079,27 @@ function renderKadPerlawanan(p, isStaff) {
   const tamuMenang  = p.status === 'selesai' && p.scoreTamu  > p.scoreRumah;
   const selesai     = p.status === 'selesai' || p.status === 'sedang_berlangsung';
 
-  const scoreHTML = selesai ? `
-    <div class="score-paparan">
-      <span class="score-num ${rumahMenang ? 'menang' : (p.status==='selesai' && p.scoreRumah !== p.scoreTamu ? 'kalah' : '')}">${p.scoreRumah}</span>
-      <span class="score-dash">—</span>
-      <span class="score-num ${tamuMenang  ? 'menang' : (p.status==='selesai' && p.scoreRumah !== p.scoreTamu ? 'kalah' : '')}">${p.scoreTamu}</span>
-    </div>
-  ` : `<div class="score-vs">${p.masa}</div>`;
+  /* Score — badminton tunjuk set info */
+  let scoreHTML;
+  if (selesai) {
+    const setStr = isBdk && p.sets ? `<div class="bdk-set-mini">${badmintonSetStr(p.sets)}</div>` : '';
+    scoreHTML = `
+      <div class="score-paparan" style="${setStr?'flex-direction:column;gap:2px':''}">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="score-num ${rumahMenang ? 'menang' : (p.status==='selesai' && p.scoreRumah !== p.scoreTamu ? 'kalah' : '')}">${p.scoreRumah}</span>
+          <span class="score-dash">—</span>
+          <span class="score-num ${tamuMenang  ? 'menang' : (p.status==='selesai' && p.scoreRumah !== p.scoreTamu ? 'kalah' : '')}">${p.scoreTamu}</span>
+        </div>
+        ${setStr}
+      </div>
+    `;
+  } else {
+    scoreHTML = `<div class="score-vs">${p.masa}</div>`;
+  }
 
   const staffBtns = isStaff ? `
     <div class="perlawanan-actions">
-      ${p.status === 'sedang_berlangsung' ? `
+      ${p.status !== 'selesai' ? `
         <button class="aksi-btn selesai-btn" onclick="cepatSelesai('${p.id}')">
           ✓ Tamat + Score
         </button>
@@ -2094,6 +2337,21 @@ function balikGridJadual() {
   render();
 }
 
+function pilihKategori(sukanId, kat) {
+  if (!state.selectedKategori) state.selectedKategori = {};
+  state.selectedKategori[sukanId] = kat;
+  render();
+}
+
+function padamSemuaJadualDariJadualTab(sukanId) {
+  const sukan = state.sukan.find(s => s.id === sukanId);
+  const bil   = state.jadual.filter(m => m.sukanId === sukanId && m.peringkat === 'kumpulan').length;
+  if (!confirm('Padam semua ' + bil + ' perlawanan peringkat kumpulan untuk ' + (sukan?.nama || 'sukan ini') + '?\n\nScore & keputusan juga akan dipadam.')) return;
+  state.jadual = state.jadual.filter(m => !(m.sukanId === sukanId && m.peringkat === 'kumpulan'));
+  simpanData();
+  render();
+}
+
 function pilihHari(tarikh, sukanId) {
   if (!state.selectedHari) state.selectedHari = {};
   state.selectedHari[sukanId] = tarikh;
@@ -2101,9 +2359,19 @@ function pilihHari(tarikh, sukanId) {
 }
 
 function hariAktif(sukanId) {
-  const hari = [...new Set(
-    state.jadual.filter(m => m.sukanId === sukanId).map(m => m.tarikh).filter(Boolean)
-  )].sort();
+  const fmt = state.formatSukan[sukanId] || 'biasa';
+
+  /* Ambil senarai hari dari sumber yang betul */
+  let hari = [];
+  if (fmt === 'round_robin') {
+    const prl = state.roundRobin[sukanId]?.perlawanan || [];
+    hari = [...new Set(prl.map(m => m.tarikh).filter(Boolean))].sort();
+  } else {
+    hari = [...new Set(
+      state.jadual.filter(m => m.sukanId === sukanId).map(m => m.tarikh).filter(Boolean)
+    )].sort();
+  }
+
   const saved = state.selectedHari?.[sukanId];
   return (saved && hari.includes(saved)) ? saved : hari[0] || null;
 }
@@ -2306,36 +2574,39 @@ function semakAutoStatus() {
   let adaPerubahan = false;
 
   state.jadual.forEach(m => {
-    /* Jangan sentuh perlawanan yang sudah selesai */
     if (m.status === 'selesai') return;
     if (!m.tarikh || !m.masa)   return;
 
-    const masaMula   = new Date(m.tarikh + 'T' + m.masa + ':00');
-    const durasi     = DURASI_SUKAN[m.sukanId] ?? 60;
-    const masaTamat  = new Date(masaMula.getTime() + durasi * 60 * 1000);
+    const masaMula = new Date(m.tarikh + 'T' + m.masa + ':00');
+    const bezaJam  = (sekarang - masaMula) / 3600000;
 
-    if (sekarang >= masaMula && m.status === 'akan_datang') {
-      /* Masa dah tiba → tukar ke Sedang Berlangsung */
+    /* Jadi LIVE hanya kalau dalam masa 4 jam dari masa mula */
+    if (bezaJam >= 0 && bezaJam < 4 && m.status === 'akan_datang') {
       m.status = 'sedang_berlangsung';
       adaPerubahan = true;
     }
-    /* Nota: tamat automatik TIDAK dilakukan —
-       staff perlu sahkan score sebelum tandakan Selesai */
   });
 
-  if (adaPerubahan) {
-    simpanData();
-    render();
-  }
+  if (adaPerubahan) { simpanData(); render(); }
 }
 
 /* Butang cepat "Tamat + Score" untuk perlawanan LIVE */
 function cepatSelesai(id) {
+  const p = state.jadual.find(m => m.id === id);
+  if (!p) return;
+
   state.editingPerlawanan = id;
-  /* Pre-set status ke selesai dalam form */
+
+  /* Badminton — terus ke form set, status dah preset selesai */
+  if (typeof adaBadminton === 'function' && adaBadminton(p.sukanId)) {
+    state.rrEditPresetSelesai = id;
+    render();
+    return;
+  }
+
+  /* Format biasa */
   state._presetSelesai = true;
   render();
-  /* Set dropdown status ke selesai dan tunjuk score */
   setTimeout(() => {
     const sel = document.getElementById('fp-status');
     if (sel) {
@@ -2352,5 +2623,256 @@ function mulaAutoStatus() {
   semakAutoStatus();
   semakAutoStatusRR(); /* ← semak perlawanan round robin juga */
   setInterval(() => { semakAutoStatus(); semakAutoStatusRR(); }, 10000);
+<<<<<<< HEAD
 >>>>>>> bf49cbd (feat: add tetapan.js for settings management with sub-tabs for account management, staff addition, team management, and sports & events)
+=======
+}
+
+
+/* ================================================================
+   JADUAL PENUH — paparan jadual bersih ikut masa (dalam app)
+   ================================================================ */
+function togolJadualPenuh(sukanId) {
+  state.jadualPenuhMode = state.jadualPenuhMode === sukanId ? null : sukanId;
+  state.drawMode        = null;
+  render();
+}
+
+function togolDrawMode(sukanId) {
+  state.drawMode        = state.drawMode === sukanId ? null : sukanId;
+  state.jadualPenuhMode = null;
+  render();
+}
+
+function renderJadualPenuh(sukanId, format) {
+  const sukan = state.sukan.find(s => s.id === sukanId);
+
+  /* Kumpul semua perlawanan termasuk bracket */
+  let semua = [];
+
+  if (format === 'round_robin') {
+    const rr = state.roundRobin[sukanId] || {};
+    semua = (rr.perlawanan || []).map(m => ({
+      ...m, _kumpNama: 'Round Robin',
+    }));
+  } else {
+    /* Jadual biasa + perlawanan kumpulan */
+    semua = state.jadual
+      .filter(m => m.sukanId === sukanId)
+      .map(m => ({
+        ...m,
+        _kumpNama: m.kumpulan
+          ? (state.kumpulanSukan[sukanId]?.find(k => k.id === m.kumpulan)?.nama || 'Kumpulan ' + m.kumpulan)
+          : labelPeringkat(m.peringkat || ''),
+      }));
+
+    /* Tambah perlawanan bracket (suku akhir, separuh akhir, final) */
+    if (format === 'kumpulan' && state.bracket?.[sukanId]) {
+      const labelFasa = {
+        suku_akhir:    '⚔️ Suku Akhir',
+        separuh_akhir: '🥊 Separuh Akhir',
+        tempat_ketiga: '🥉 Tempat Ke-3',
+        final:         '🏆 Final',
+      };
+      ['suku_akhir','separuh_akhir','tempat_ketiga','final'].forEach(fasa => {
+        const prl = state.bracket[sukanId][fasa] || [];
+        prl.forEach(m => {
+          semua.push({ ...m, _kumpNama: labelFasa[fasa] || fasa });
+        });
+      });
+    }
+  }
+
+  /* Tab kategori — kira SEBELUM tapis supaya tab tunjuk semua pilihan */
+  const kategoriSemua = [...new Set(semua.map(m => m.kategori).filter(Boolean))];
+  const katAktifPenuh = (state.selectedKategori?.[sukanId] && kategoriSemua.includes(state.selectedKategori[sukanId]))
+    ? state.selectedKategori[sukanId] : null;
+
+  /* Tapis ikut kategori SEBELUM bina ikutTarikh */
+  if (katAktifPenuh) {
+    semua = semua.filter(m => m.kategori === katAktifPenuh);
+  }
+
+  if (semua.length === 0 && !katAktifPenuh) {
+    return `<div class="kosong-box"><div style="font-size:36px;margin-bottom:10px">📋</div>Tiada jadual lagi.</div>`;
+  }
+
+  /* Kumpul ikut tarikh (dari senarai yang dah ditapis) */
+  const ikutTarikh = {};
+  const tanpaTarikh = [];
+  semua.forEach(m => {
+    if (m.tarikh) {
+      if (!ikutTarikh[m.tarikh]) ikutTarikh[m.tarikh] = [];
+      ikutTarikh[m.tarikh].push(m);
+    } else {
+      tanpaTarikh.push(m);
+    }
+  });
+
+  const tarikhKeys = Object.keys(ikutTarikh).sort();
+
+  const tabKatPenuh = kategoriSemua.length > 1 ? `
+    <div class="kat-tab-bar" style="margin-bottom:16px">
+      <button class="kat-tab-btn ${!katAktifPenuh ? 'active' : ''}"
+        onclick="pilihKategori('${sukanId}', null)">📋 Semua</button>
+      ${kategoriSemua.map(k => `
+        <button class="kat-tab-btn ${katAktifPenuh === k ? 'active' : ''}"
+          data-kat="${k}"
+          onclick="pilihKategori('${sukanId}', this.dataset.kat)">
+          ${k}
+        </button>`).join('')}
+    </div>
+  ` : '';
+
+  const aktifHari = state.jadualPenuhHari?.[sukanId] ||
+    (tarikhKeys.length > 0 ? tarikhKeys[0] : null);
+
+  const tabHari = tarikhKeys.length > 1 ? `
+    <div class="hari-tab-wrap" style="margin-bottom:16px">
+      <div class="hari-tab-bar">
+        ${tarikhKeys.map(h => {
+          const live = (ikutTarikh[h] || []).some(m => m.status === 'sedang_berlangsung');
+          return `
+            <button class="hari-tab-btn ${h === aktifHari ? 'active' : ''}"
+              onclick="state.jadualPenuhHari=state.jadualPenuhHari||{};state.jadualPenuhHari['${sukanId}']='${h}';render()">
+              ${formatTarikhPendek(h)}
+              ${live ? '<span class="live-dot"></span>' : ''}
+            </button>
+          `;
+        }).join('')}
+        ${tanpaTarikh.length > 0 ? `
+          <button class="hari-tab-btn ${aktifHari === 'tba' ? 'active' : ''}"
+            onclick="state.jadualPenuhHari=state.jadualPenuhHari||{};state.jadualPenuhHari['${sukanId}']='tba';render()">
+            Belum Ditetapkan
+          </button>
+        ` : ''}
+      </div>
+    </div>
+  ` : '';
+
+  /* Perlawanan yang dipapar */
+  const papar = aktifHari === 'tba'
+    ? tanpaTarikh
+    : (ikutTarikh[aktifHari] || []);
+
+  const tarikhLabel = aktifHari && aktifHari !== 'tba'
+    ? new Date(aktifHari + 'T00:00:00').toLocaleDateString('ms-MY', {
+        weekday:'long', day:'numeric', month:'long', year:'numeric'
+      })
+    : 'Tarikh Belum Ditetapkan';
+
+  /* Jadual */
+  const jadualHTML = `
+    <div class="jp-tarikh-header">${tarikhLabel}</div>
+    <div class="jp-table-wrap">
+      <table class="jp-table">
+        <thead>
+          <tr>
+            <th style="width:60px">Masa</th>
+            <th style="width:140px">Kumpulan</th>
+            <th>Tuan Rumah</th>
+            <th style="width:90px;text-align:center">Score</th>
+            <th>Pasukan Tamu</th>
+            <th style="width:120px">Gelanggang</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${papar.map((m, i) => {
+            const selesai = m.status === 'selesai';
+            const live    = m.status === 'sedang_berlangsung';
+            const rumahMenang = selesai && m.scoreRumah > m.scoreTamu;
+            const tamuMenang  = selesai && m.scoreTamu  > m.scoreRumah;
+            const score = selesai || live
+              ? `<span class="jp-score">${m.scoreRumah || 0} — ${m.scoreTamu || 0}</span>`
+              : `<span class="jp-vs">VS</span>`;
+
+            return `
+              <tr class="jp-row ${live ? 'jp-live' : selesai ? 'jp-selesai' : ''} ${i%2===0?'jp-genap':'jp-ganjil'}">
+                <td class="jp-masa">
+                  ${live ? '<span class="live-dot" style="vertical-align:middle;margin-right:4px"></span>' : ''}
+                  ${m.masa || '—'}
+                </td>
+                <td class="jp-kump">${m._kumpNama}</td>
+                <td class="jp-pasukan ${rumahMenang ? 'jp-menang' : ''}">${m.rumah}</td>
+                <td style="text-align:center">${score}</td>
+                <td class="jp-pasukan ${tamuMenang ? 'jp-menang' : ''}">${m.tamu}</td>
+                <td class="jp-gel">${m.gelanggang || '—'}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  /* Tunjuk semua hari kalau hanya 1 hari */
+  const semua1Hari = tarikhKeys.length <= 1 && tanpaTarikh.length === 0;
+
+  let output = tabKatPenuh + tabHari;
+  if (semua1Hari) {
+    output += jadualHTML;
+  } else if (papar.length === 0 && tanpaTarikh.length === 0) {
+    output += `<div class="kosong-box">Tiada perlawanan pada hari ini.</div>`;
+  } else {
+    if (papar.length > 0) output += jadualHTML;
+    else output += `<div class="kosong-box" style="margin-bottom:12px">Tiada perlawanan kumpulan pada hari ini.</div>`;
+  }
+
+  /* Perlawanan bracket tanpa tarikh — keluar di bawah sekali */
+  if (tanpaTarikh.length > 0) {
+    const fasaLabel = { suku_akhir:'⚔️ Suku Akhir', separuh_akhir:'🥊 Separuh Akhir', tempat_ketiga:'🥉 Tempat Ke-3', final:'🏆 Final' };
+    /* Kumpul ikut fasa */
+    const ikutFasa = {};
+    tanpaTarikh.forEach(m => {
+      const f = m._kumpNama || 'Lain';
+      if (!ikutFasa[f]) ikutFasa[f] = [];
+      ikutFasa[f].push(m);
+    });
+    Object.entries(ikutFasa).forEach(([fasa, items]) => {
+      output += `
+        <div class="jp-tarikh-header" style="border-left-color:var(--gold);color:var(--gold);margin-top:16px">
+          ${fasa}
+          <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:8px">— Tarikh belum ditetapkan</span>
+        </div>
+        <div class="jp-table-wrap">
+          <table class="jp-table">
+            <thead>
+              <tr>
+                <th style="width:60px">Masa</th>
+                <th style="width:140px">Peringkat</th>
+                <th>Pasukan 1</th>
+                <th style="width:90px;text-align:center">Score</th>
+                <th>Pasukan 2</th>
+                <th style="width:120px">Gelanggang</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((m, i) => {
+                const selesai = m.status === 'selesai';
+                const live    = m.status === 'sedang_berlangsung';
+                const rumahMenang = selesai && m.scoreRumah > m.scoreTamu;
+                const tamuMenang  = selesai && m.scoreTamu  > m.scoreRumah;
+                const score = selesai || live
+                  ? `<span class="jp-score">${m.scoreRumah||0} — ${m.scoreTamu||0}</span>`
+                  : `<span class="jp-vs">${m.rumah && m.tamu ? 'VS' : '⏳'}</span>`;
+                return `
+                  <tr class="jp-row ${live?'jp-live':selesai?'jp-selesai':''} ${i%2===0?'jp-genap':'jp-ganjil'}">
+                    <td class="jp-masa">${m.masa || '—'}</td>
+                    <td class="jp-kump">${fasa}</td>
+                    <td class="jp-pasukan ${rumahMenang?'jp-menang':''}">${m.rumah || '⏳ Menunggu…'}</td>
+                    <td style="text-align:center">${score}</td>
+                    <td class="jp-pasukan ${tamuMenang?'jp-menang':''}">${m.tamu || '⏳ Menunggu…'}</td>
+                    <td class="jp-gel">${m.gelanggang || '—'}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    });
+  }
+
+  return `<div class="jp-wrap">${output}</div>`;
+>>>>>>> 2c89801 (feat: implement full bracket system for knockout tournaments)
 }

@@ -678,6 +678,12 @@ function panelPasukan() {
     <!-- Senarai semasa -->
     <div class="set-card-label" style="margin-bottom:10px">
       Pasukan Berdaftar &nbsp;<span class="count-chip">${state.pasukan.length}</span>
+      ${state.pasukan.length > 0 ? `
+        <button class="staff-del" style="margin-left:10px;font-size:11px;padding:3px 10px"
+          onclick="padamSemuaPasukan()">
+          🗑 Padam Semua
+        </button>
+      ` : ''}
     </div>
     <div style="display:grid;gap:6px">
       ${state.pasukan.length === 0
@@ -880,6 +886,13 @@ function tambahPasukan() {
 function padamPasukan(i) {
   if (!confirm('Padam pasukan "' + state.pasukan[i] + '"?')) return;
   state.pasukan.splice(i, 1);
+  simpanData();
+  render();
+}
+
+function padamSemuaPasukan() {
+  if (!confirm('Padam SEMUA ' + state.pasukan.length + ' pasukan?\n\nTindakan ini tidak boleh diundur.')) return;
+  state.pasukan = [];
   simpanData();
   render();
 }
